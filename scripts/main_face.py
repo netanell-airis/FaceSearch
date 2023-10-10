@@ -222,7 +222,7 @@ class VideoTracker(object):
                         y0 = max(0,y0 - int(h/2))
                         x1 = min(img0.shape[1],x0+int(2*w))
                         y1 = min(img0.shape[0],y0+int(2*h))
-                        face = img0[y0:y1,x0:x1]
+                        face = img0[y0:y1,x0:x1,::-1]
                         face_id = outputs[ix,-1]
                         face_num = idx_frame
                         # face_num = fd.id2num.get(face_id, 0)
