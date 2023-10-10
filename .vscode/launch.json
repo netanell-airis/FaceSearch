@@ -18,6 +18,18 @@
             ]
         },
         {
+            "name": "Python: extract_sigs.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/extract_sigs.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": ["--input_path",
+                 "/Users/eranborenstein/data/airis/face_tracks",
+                "--save_path","/tmp/faces_sigs",
+            ]
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",

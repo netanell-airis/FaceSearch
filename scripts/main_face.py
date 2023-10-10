@@ -2,7 +2,6 @@ from utils_ds.parser import get_config
 from utils_ds.draw import draw_boxes
 from deep_sort import build_tracker
 from PIL import Image 
-
 import argparse
 import os
 import pandas as pd
@@ -17,7 +16,7 @@ from deepface import DeepFace
 from deepface.commons import functions
 # face detector
 #from facenet_pytorch import MTCNN
-
+DeepFace.verify
 class FaceDetector:
     def __init__(self, device, output_dir):
         self.model = RetinaFace.build_model()
