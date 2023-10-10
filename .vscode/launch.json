@@ -23,9 +23,10 @@
             "request": "launch",
             "program": "${workspaceFolder}/scripts/extract_sigs.py",
             "console": "integratedTerminal",
-            "justMyCode": true,
+            "justMyCode": false,
             "args": ["--input_path",
-                 "/Users/eranborenstein/data/airis/face_tracks",
+                //  "/Users/eranborenstein/data/airis/face_tracks/",
+                 "/Users/eranborenstein/data/airis/face_tracks/sample/VID-20231008-WA0033.faces",
                 "--save_path","/tmp/faces_sigs",
             ]
         },
