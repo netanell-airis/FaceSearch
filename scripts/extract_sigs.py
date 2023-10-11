@@ -60,8 +60,6 @@ def get_imgs2process(in_dir):
             imgs2proc += imgs
     return imgs2proc
 
-
-
 def run(args):
     imgs2proc = get_imgs2process(args.input_path)    
     # batch_transform(imgs2proc, transform=lambda x:rotate_90(x,clockwise=False))
@@ -114,6 +112,30 @@ def extract_query_sig(args):
     dbg = 1
 
 
+def debug_sigs(args):
+    fnames = [args.query_img_path]
+    d = torch.load(args.input_path)
+    db = d['db']
+    db0 = db[db.video_id.str.contains('33')]
+    img_paths = db0.img_path.to_list()
+
+    db_path = os.path.split(img_paths[-1])[0]
+    db_path = os.path.split(db_path)[0]
+    #args.query_img_path = img_paths[20]
+    a = DeepFace.find(args.query_img_path, db_path, 
+                      model_name='ArcFace', detector_backend='retinaface',
+                      enforce_detection=False)
+
+
+    sigs = extract_signatures(img_paths, detector_backend='retina_face')
+    a = DeepFace.verify(img1_path = img_paths[0], img2_path=img_paths[1],
+                    model_name='ArcFace',detector_backend='skip')
+
+    sig = extract_signatures(fnames,detector_backend='retinaface')
+    query = [np.array(x['embedding'])[np.newaxis,:] for x in sig]
+    query = np.concatenate(query, axis=0)
+    
+
     
 
 if __name__ == '__main__':
@@ -125,9 +147,10 @@ if __name__ == '__main__':
     args.input_path = "/Users/eranborenstein/data/airis/face_tracks/"
     args.save_path = "/Users/eranborenstein/data/airis/face_tracks/index.pth"
     args.input_path = args.save_path
-    args.query_img_path = "/Users/eranborenstein/data/airis/face_tracks/noa_query_1.jpg"
+    args.query_img_path = "/Users/eranborenstein/data/airis/face_tracks/noa_query_2.jpg"
     #create_index(args)
-    extract_query_sig(args)
+    debug_sigs(args)
+    #extract_query_sig(args)
     #run(args)
     
 

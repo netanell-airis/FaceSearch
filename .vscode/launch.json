@@ -5,12 +5,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: main_face.py",
+            "name": "build_index.py",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/scripts/main_face.py",
+            "program": "${workspaceFolder}/scripts/build_index.py",
             "console": "integratedTerminal",
-            "justMyCode": true,
+            "justMyCode": false,
             "args": ["--input_path",
                  "/Users/eranborenstein/pc/airis/DeepSORT_Face/",
                 "--save_path","/tmp/faces",
@@ -18,7 +18,20 @@
             ]
         },
         {
-            "name": "Python: extract_sigs.py",
+            "name": "main_face.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/main_face.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--input_path",
+                 "/Users/eranborenstein/pc/airis/DeepSORT_Face/",
+                "--save_path","/tmp/faces",
+                "--scale","1"
+            ]
+        },
+        {
+            "name": "extract_sigs.py",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/extract_sigs.py",
