@@ -29,7 +29,7 @@ class FaceDetector:
         self.id2num = dict()
         self.detector_backend = 'retinaface'
         self.model_name = 'ArcFace'
-        self.align_faces = True #True
+        self.align_faces = False #True
         self.target_size = DeepFace.functions.find_target_size(model_name="ArcFace")
         self.detector_outputs = list()
         #self.model = RetinaFace.build_model()
@@ -145,7 +145,7 @@ class FaceDetector:
         batch = np.concatenate(batch, axis=0)
         embedding = self.embedding_model.predict(batch, verbose=0)
 
-        print(f'embedding time = {time.time()-t0}')
+        # print(f'embedding time = {time.time()-t0}')
 
         t0 = time.time()
         # track face_ids
@@ -172,7 +172,7 @@ class FaceDetector:
         # embedding_normed = embedding / np.linalg.norm(embedding, axis=1)[:,np.newaxis]
         self.embeddings = np.concatenate((self.embeddings, embedding), axis=0)
         self.detector_outputs += detector_output
-        print(f'track_face_ids time={time.time()-t0}')
+        # print(f'track_face_ids time={time.time()-t0}')
         return detector_output
 
     def extract_bboxes(self, frame, db):
@@ -456,7 +456,7 @@ class VideoTracker(object):
                 self.writer.write(img0)
 
             idx_frame += 1
-            print(f'display and save faces time={time.time()-t00}')
+            # print(f'display and save faces time={time.time()-t00}')
 
         print('Avg Det time (%.3fs), per frame' % (sum(detector_time) / len(detector_time)))
         t_end = time.time()
