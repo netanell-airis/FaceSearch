@@ -14,7 +14,7 @@
             "args": ["--input_path",
                  "/Users/eranborenstein/pc/airis/DeepSORT_Face/",
                 "--save_path","/tmp/faces",
-                "--scale","1"
+                "--scale","4"
             ]
         },
         {

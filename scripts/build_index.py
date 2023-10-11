@@ -29,7 +29,7 @@ class FaceDetector:
         self.id2num = dict()
         self.detector_backend = 'retinaface'
         self.model_name = 'ArcFace'
-        self.align_faces = False #True
+        self.align_faces = True #True
         self.target_size = DeepFace.functions.find_target_size(model_name="ArcFace")
         self.detector_outputs = list()
         #self.model = RetinaFace.build_model()
@@ -94,7 +94,7 @@ class FaceDetector:
         s = np.array(s)
         return 1 - s
 
-    def detect_and_track(self, frame, idx=0):
+    def detect_and_track(self, frame, idx=0,scale=1):
         """
         returns detector_output list of dictionary with:
         one item for each detected face:
@@ -104,29 +104,50 @@ class FaceDetector:
 
         """
         # extract faces
-        
-        detector_output = DeepFace.extract_faces(frame,
+        t0 = time.time()
+        scaled_frame = frame.copy()
+        if scale != 1:
+            h, w, _ = frame.shape
+            scaled_frame = cv2.resize(frame, (w // scale, h // scale))         # down sample to speed up
+            #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)      #
+
+        detector_output = DeepFace.extract_faces(scaled_frame,
                                       target_size=self.target_size,
                                    detector_backend=self.detector_backend,
                                    enforce_detection=False,
                                    align=self.align_faces)
+        print(f'Extract_faces time={time.time()-t0}')
         if len(detector_output) == 0:
             return list()
-        faces = [x['face'] for x in detector_output]
+        t0 = time.time()
         scores = [x['confidence'] for x in detector_output]
         bboxes = [x['facial_area'] for x in detector_output]
         frame_res = pd.DataFrame(bboxes)
         frame_res['score'] = scores 
         frame_res['frame_num'] = self.frame_num
-        
+        frame_res[['x','y','w','h']] = frame_res[['x','y','w','h']] * scale
+        db = pd.DataFrame(frame_res)
+        faces = self.extract_bboxes(frame, db)
+        revised_output = list()
+        for ix, row in enumerate(detector_output): 
+            new_row = db.iloc[ix].to_dict()
+            new_row['face'] = faces[ix]
+            revised_output.append(new_row)
+        detector_output = revised_output
+            
+
+
         
         # extract embeddings
-        batch = [functions.normalize_input(x, normalization='ArcFace') for x in faces]
+
+        batch = [functions.normalize_input(x[0].copy(), normalization='ArcFace') for x in faces]
         batch = [np.expand_dims(img, axis=0) for img in batch]
         batch = np.concatenate(batch, axis=0)
         embedding = self.embedding_model.predict(batch, verbose=0)
 
+        print(f'embedding time = {time.time()-t0}')
 
+        t0 = time.time()
         # track face_ids
         th = self.embedding_sim_th
         th = 0.1
@@ -151,8 +172,56 @@ class FaceDetector:
         # embedding_normed = embedding / np.linalg.norm(embedding, axis=1)[:,np.newaxis]
         self.embeddings = np.concatenate((self.embeddings, embedding), axis=0)
         self.detector_outputs += detector_output
+        print(f'track_face_ids time={time.time()-t0}')
         return detector_output
 
+    def extract_bboxes(self, frame, db):
+        """
+        face_objs: list of tuples:
+
+        """
+        target_size = self.target_size
+        bbox = db[['x','y','w','h']].values 
+        extracted_faces = list()
+        for ix in range(bbox.shape[0]):
+            x,y,w,h = bbox[ix]
+            current_img = frame[y:(y+h),x:(x+w)]
+            if current_img.shape[0] > 0 and current_img.shape[1] > 0:
+                # resize and padding
+                if current_img.shape[0] > 0 and current_img.shape[1] > 0:
+                    factor_0 = target_size[0] / current_img.shape[0]
+                    factor_1 = target_size[1] / current_img.shape[1]
+                    factor = min(factor_0, factor_1)
+
+                    dsize = (int(current_img.shape[1] * factor), int(current_img.shape[0] * factor))
+                    current_img = cv2.resize(current_img, dsize)
+
+                    diff_0 = target_size[0] - current_img.shape[0]
+                    diff_1 = target_size[1] - current_img.shape[1]
+                    current_img = np.pad(
+                        current_img,
+                        (
+                            (diff_0 // 2, diff_0 - diff_0 // 2),
+                            (diff_1 // 2, diff_1 - diff_1 // 2),
+                            (0, 0),
+                        ),
+                        "constant",
+                    )
+
+                    # double check: if target image is not still the same size with target.
+                    if current_img.shape[0:2] != target_size:
+                        current_img = cv2.resize(current_img, target_size)
+
+                    # normalizing the image pixels
+                    from deepface.commons.functions import image
+                    img_pixels = image.img_to_array(current_img)  # what this line doing? must?
+                    img_pixels = np.expand_dims(img_pixels, axis=0)
+                    img_pixels /= 255  # normalize input in [0, 1]
+
+
+                    extracted_faces.append(img_pixels)
+
+        return extracted_faces
 
 
     def detect(self, frame):
@@ -323,7 +392,7 @@ class VideoTracker(object):
             if idx_frame % self.args.frame_interval == 0:
                 # (#ID, 5) x1,y1,x2,y2,id
                 tdet = time.time()
-                detector_output = self.face_detector.detect_and_track(img0, idx_frame)
+                detector_output = self.face_detector.detect_and_track(img0, idx_frame, self.scale)
                 last_out = detector_output
                 detector_time.append(time.time()-tdet)
                 save_faces = True
@@ -335,11 +404,12 @@ class VideoTracker(object):
 
             # post-processing ***************************************************************
             # visualize bbox  ********************************
-            num_detected_faces = len(detector_output)            
+            t00 = time.time()
+            num_detected_faces = len(detector_output)
+
             if num_detected_faces > 0:
                 if save_faces:
-                    bbox_info = pd.DataFrame([x['facial_area'] for x in detector_output])
-                    bbox_xywh = bbox_info[['x','y','w','h']].values 
+                    bbox_xywh = np.array([(x['x'],x['y'],x['w'],x['h']) for x in detector_output],dtype=np.int32)
                     bbox_xyxy = bbox_xywh.copy()
                     bbox_xyxy[:,2:] += bbox_xyxy[:,:2]
                     identities = self.face_detector.face_ids[-num_detected_faces:]
@@ -355,16 +425,14 @@ class VideoTracker(object):
                         face_num = idx_frame
                         # face_num = fd.id2num.get(face_id, 0)
                         # fd.id2num[face_id] = face_num + 1
-                        resized_faces = detector_output[ix]['face']
-                        tmp_ = resized_faces.copy()
-                        tmp_ = (((tmp_ - tmp_.min())/ (tmp_.max()-tmp_.min()))*255).astype(np.uint8)
+                        resized_faces = detector_output[ix]['face'][0]
+                        resized_faces = (resized_faces * 255).astype(np.int32)
                         base_name = f'face_{face_id:04d}_{face_num:04d}'
                         fname = f'{base_name}.aligned.png'
                         fname = os.path.join(fd.output_dir,fname)
                         crop_fname = f'{base_name}.png'
                         crop_fname = os.path.join(fd.output_dir,crop_fname)
-                        resized_faces = tmp_
-                        img = Image.fromarray(resized_faces) # face
+                        img = Image.fromarray(resized_faces.astype(np.uint8)) # face
                         img.save(fname)
                         img = Image.fromarray(cropped_face) # face
                         img.save(crop_fname)
@@ -376,7 +444,6 @@ class VideoTracker(object):
                 text_scale = max(1, img0.shape[1] // 1600)
                 cv2.putText(img0, 'frame: %d fps: %.2f ' % (idx_frame, len(avg_fps) / sum(avg_fps)),
                         (20, 20 + text_scale), cv2.FONT_HERSHEY_PLAIN, text_scale, (0, 0, 255), thickness=2)
-
             # display on window ******************************
             if self.args.display:
                 cv2.imshow("test", img0)
@@ -385,10 +452,11 @@ class VideoTracker(object):
                     break
 
             # save to video file *****************************
-            if self.args.save_path:
+            if self.args.save_path:                
                 self.writer.write(img0)
 
             idx_frame += 1
+            print(f'display and save faces time={time.time()-t00}')
 
         print('Avg Det time (%.3fs), per frame' % (sum(detector_time) / len(detector_time)))
         t_end = time.time()
