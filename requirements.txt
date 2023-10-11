@@ -1,0 +1,9 @@
+facenet-pytorch
+tensorflow[and-cuda]
+pyyaml 
+easydict
+deepface 
+torch
+torchvision 
+deepsort
+ipython
