@@ -313,7 +313,7 @@ class VideoTracker(object):
 
         idx_frame = 0
         last_out = None
-        while self.vdo.grab() and idx_frame < 10:
+        while self.vdo.grab():
             # Inference *********************************************************************
             t0 = time.time()
             _, img0 = self.vdo.retrieve()
