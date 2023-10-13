@@ -7,3 +7,5 @@ torch
 torchvision 
 deepsort
 ipython
+dash 
+plotly

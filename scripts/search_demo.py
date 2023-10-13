@@ -1,5 +1,8 @@
 import argparse
+import datetime
+
 import os
+import sys
 from PIL import Image
 from deepface import DeepFace
 from deepface.DeepFace import functions
@@ -12,34 +15,14 @@ import torch
 from face_search.utils import get_gallery_templates
 from face_search.search_index import SearchIndex
 from face_search.utils import copy_partial_dict
-
-def extract_signatures(fnames, detector_backend = 'skip',target_size=(112,112)):
-    signatures = list()
-    model = DeepFace.build_model('ArcFace')
-    for img_path in tqdm(fnames,desc='extract_signatures'):
-        try: 
-            sig = DeepFace.represent(img_path,
-                                        model_name='ArcFace',
-                                        detector_backend=detector_backend)
-        except:
-            sig = DeepFace.represent(img_path,
-                                        model_name='ArcFace',
-                                        detector_backend='skip')
-
-        signatures.append(sig[0])
-    return signatures
+from face_search.utils import extract_signatures, get_files2process
+from face_search.viz import render_query_res, serve_app
+import logging
+from face_search.fs_logger import logger_init
 
 def filter_index_files(x):
     return  os.path.split(x)[-1] == 'video_summary.pth'
 
-def get_files2process(in_dir, flt=filter_index_files):
-    imgs2proc = list()
-    for dirpath, dirnames, filenames in os.walk(in_dir):
-        imgs = list(filter(lambda x:flt(x), filenames))
-        imgs = list(map(lambda x:os.path.join(dirpath,x), imgs))
-        if len(imgs):
-            imgs2proc += imgs
-    return imgs2proc
 
 def run(args):
     imgs2proc = get_files2process(args.input_path)    
@@ -89,8 +72,7 @@ def extract_query_sig(args):
     ix = np.argsort(-cdist, axis=0)[:,0]
     ix = ix[:10]
     db0 = db[ix]
-
-    dbg = 1
+    
 
 
 def debug_sigs(args):
@@ -126,27 +108,66 @@ def debug_sigs(args):
 def img_filter(x):
     return os.path.splitext(x)[-1].lower() in ['.jpeg','jpg','png']
 
+def display_results():
+    if 0:
+        queries = [os.path.join('/tmp/query',x) for x in os.listdir('/tmp/query/')]
+        q_list = list()
+        for qname in queries:
+            try:
+                q = torch.load(qname)
+            except:
+                continue
+            q_list += q
+        scores = [x[1][0]['score'] for x in q_list]
+        scores = np.array(scores)
+        ix = np.argsort(scores)
+        top_k_queries = [q_list[ix[i]] for i in range(10)]
+    else:
+        top_k_queries = torch.load('/tmp/best_queries.pth')
+
+    layout = render_query_res(top_k_queries[:10])
+    serve_app(layout)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # input and output
     parser.add_argument('--db_root', type=str, default='video.mp4', help='root of index')  
     parser.add_argument('--query', type=str, default='output/', help='query') 
     args = parser.parse_args()
-    
-    index_files = get_files2process(args.db_root, flt=filter_index_files)
+    #display_results()    
+    logger_init()
+    #import logging
+    logger = logging.getLogger()
+    logger.info(f'command line={sys.argv}')
+    logging.info('hello')
+    index_files = get_files2process(args.db_root, flt=filter_index_files) #[:4]
     query_images = get_files2process(args.query, flt=img_filter)
-    query = extract_signatures(query_images, 
-                               detector_backend='retinaface',
-                               target_size=(112,112))
-    index = SearchIndex.from_index_files(index_files)
-    emb = np.array([x['embedding'] for x in query])
-    dst = index.search_gallery(emb)
-    bix = dst.argmin(axis=1)[0]
-    score = dst.min(axis=1)[0]
-    row = index.db.iloc[bix]
-    video_id = int(row.video_id)
-    fname = index.index_files[video_id]
-    print(f'match score = {score}, video={fname}, frame={row.frame_num}')
-    img = Image.fromarray((index.face_list[bix][0]*255).astype(np.uint8))
-    dbg = 1
-    
+    logger.info(f'working on {len(index_files)} index files and {len(query_images)} queries')
+    logger.info(f'index_files={index_files}')
+    logger.info(f'query_images={query_images}')
+    logger.info("Generating index")
+    corpus_fname = f'/tmp/search_corpus.{len(index_files)}.pth'
+    if os.path.isfile(corpus_fname):
+        corpus = torch.load(corpus_fname)
+    else:
+        corpus = SearchIndex.from_index_files(index_files)
+        #torch.save(corpus, corpus_fname)
+    num_faces = len(corpus.db)
+    num_queries = len(query_images)
+    logger.info(f'looking for {num_queries} people in {num_faces} embeddings')
+    all_queries = list()
+    for ix,query_fname in tqdm(enumerate(query_images), desc='extract-sig'):
+        try:
+            cimg = Image.open(query_fname)
+        except:
+            continue
+        logger.info(f'working on image {query_fname}, size={cimg.size}')
+        query_res = corpus.search_by_query_images([query_fname])
+        torch.save(query_res,f'/tmp/query_{ix:03d}_results.pth')
+        all_queries += query_res
+        if ix % 5 == 0:
+            torch.save(all_queries,f'/tmp/all_queries.pth')
+
+
+    # layout = render_query_res(query_res)
+    # serve_app(layout)

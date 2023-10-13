@@ -5,6 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "search",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/search_demo.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--db_root",
+                 "/Users/eranborenstein/data/airis/video_index2.scaled",
+                "--query","/Users/eranborenstein/data/airis/query_id_1",
+            ]
+        },
+        {
             "name": "build_index.py",
             "type": "python",
             "request": "launch",
