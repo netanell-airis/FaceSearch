@@ -20,6 +20,7 @@ from face_search.viz import render_query_res, serve_app
 import logging
 from face_search.fs_logger import logger_init
 
+
 def filter_index_files(x):
     return  os.path.split(x)[-1] == 'video_summary.pth'
 
