@@ -1,4 +1,5 @@
 import os
+import re
 import numpy as np
 import scipy.sparse as sp
 from deepface import DeepFace
@@ -61,3 +62,26 @@ def extract_signatures(fnames, detector_backend = 'retinaface',target_size=(112,
 
         signatures.append(sig[0])
     return signatures
+
+def is_video(fname):
+    return os.path.splitext(fname)[-1].lower() == '.mp4'
+
+def is_video_frame(fname):
+    r0 = re.compile('frame_(\d+).png')
+    g = r0.search(fname)
+    frame_num = g.groups()[0] if g else None
+    return frame_num 
+
+def is_video_face_roi(fname):
+    r0 = re.compile('face_(\d+)_(\d).png')
+    g = r0.match(fname)
+    frame_num = g.groups()[0] if g else None
+    return frame_num
+    
+
+
+
+def get_video_process_dir(video_path):
+    process_dir = os.path.splitext(video_path)[0] + '.pipeline'
+    os.makedirs(process_dir, exist_ok=True)
+    return process_dir
