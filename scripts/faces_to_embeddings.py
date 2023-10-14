@@ -69,6 +69,8 @@ def faces2embeddings(video_files):
     # Initialize the MTCNN detector
     #detector = MTCNN(steps_threshold=[0.6,0.7,0.9])
     # mtcnn_model = mtcnn.MTCNN(device='cpu', crop_size=(112, 112))
+    #device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    mtcnn_model = mtcnn.MTCNN(device='cpu', crop_size=(112, 112))
 
     model = load_pretrained_model('ir_50')
     invalid_input = torch.zeros((1,3,112,112))
@@ -94,7 +96,7 @@ def faces2embeddings(video_files):
                                  f'face_{frame_num:05d}_{idx:04d}.png')
             # frame_num = int(is_video_frame(input_image_path))
             # Load the input image
-            aligned_face = get_aligned_face(fname)
+            aligned_face = get_aligned_face(mtcnn_model,fname)
             det_list.append(aligned_face is not None)
             if det_list[-1] is False:
                 aligned_face = Image.new(mode="RGB", size=(112, 112))
@@ -110,7 +112,8 @@ def faces2embeddings(video_files):
         while i0 < n0:
             i1 = min(i0+bs,n0)
             x = torch.concatenate(aligned_faces_db[i0:i1],dim=0)
-            fe, fnorm = model(x)
+            with torch.no_grad():
+                fe, fnorm = model(x)
             elist.append((fe, fnorm))
             tbar.update(i1-i0)
             i0 = i1
@@ -136,7 +139,6 @@ if __name__ == "__main__":
     parser.add_argument('--input_directory', help="The root directory containing video frames")
     args = parser.parse_args()
 
-    args.input_directory = '/Users/eranborenstein/pc/FaceSearch/configs'   
     video_files = get_files2process(args.input_directory, flt=lambda x:is_video(x))
 
     logging.info(f'detecting faces in {len(video_files)} videos')
