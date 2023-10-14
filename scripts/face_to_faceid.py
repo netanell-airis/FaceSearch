@@ -24,38 +24,7 @@ currentUrl = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(currentUrl, 'yolov5')))
 
 
-cudnn.benchmark = True
-
-def calculate_iou(boxA, boxB):
-    """Calculates the intersection over union (IoU) between two bounding boxes.
-
-    Args:
-        boxA: A list of four coordinates representing the bounding box in the format
-        [x_min, y_min, x_max, y_max].
-        boxB: A list of four coordinates representing the other bounding box in the
-        format [x_min, y_min, x_max, y_max].
-
-    Returns:
-        The IoU score as a float.
-    """
-
-    # Get the coordinates of the intersection rectangle.
-    xA = max(boxA[0], boxB[0])
-    yA = max(boxA[1], boxB[1])
-    xB = min(boxA[2], boxB[2])
-    yB = min(boxA[3], boxB[3])
-
-    # Calculate the area of the intersection rectangle.
-    interArea = abs(max((xB - xA, 0)) * max((yB - yA), 0))
-
-    # Calculate the area of both the bounding boxes.
-    boxAArea = abs((boxA[2] - boxA[0]) * (boxA[3] - boxA[1]))
-    boxBArea = abs((boxB[2] - boxB[0]) * (boxB[3] - boxB[1]))
-
-    # Calculate the intersection over union.
-    iou = interArea / float(boxAArea + boxBArea - interArea)
-
-    return iou
+# cudnn.benchmark = True
 
 
 def calc_iou(xywh1, xywh2):
@@ -93,13 +62,15 @@ class VideoTracker(object):
         self.db = pd.read_csv(self.db_fname)           # 0.2
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cpu')
         self.half = self.device.type != 'cpu'  # half precision only supported on CUDA
 
         # ***************************** initialize DeepSORT **********************************
         cfg = get_config()
         cfg.merge_from_file(args.config_deepsort)
 
-        use_cuda = self.device.type != 'cpu' and torch.cuda.is_available()
+        # use_cuda = self.device.type != 'cpu' and torch.cuda.is_available()
+        use_cuda = False
         self.deepsort = build_tracker(cfg, use_cuda=use_cuda)
 
         if self.device == 'cpu':
@@ -183,7 +154,7 @@ class VideoTracker(object):
             idx_frame += 1                                                            
         t_end = time.time()
         dt = t_end - t_start
-        logging.info('Total time {dt:.3f}s')
+        logging.info(f'Total time {dt:.3f}s')
         fname = os.path.join(self.root_dir,'face_ids.csv')
         logging.info(f'saving updated faces in {fname}')
         self.db.to_csv(fname)
@@ -242,5 +213,5 @@ if __name__ == "__main__":
     t0 = time.time()
     faces2faceids(video_files, args)
     t1 = time.time()
-    logging.info(f'process took {t1-t0}secs')
+    logging.info(f'process took {t1-t0:.2f}secs')
 
