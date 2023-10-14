@@ -100,6 +100,7 @@ def faces2embeddings(video_files):
             det_list.append(aligned_face is not None)
             if det_list[-1] is False:
                 aligned_face = Image.new(mode="RGB", size=(112, 112))
+                aligned_face.fill(128)
             
             bgr_tensor_input = to_input(aligned_face)
             aligned_faces_db.append(bgr_tensor_input)
