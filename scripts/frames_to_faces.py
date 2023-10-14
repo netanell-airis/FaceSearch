@@ -10,10 +10,14 @@ import argparse
 from face_search.fs_logger import logger_init
 from face_search.utils import is_video_frame, get_video_process_dir
 from face_search.utils import is_video, get_files2process
+import torch
 
 def detect_faces(video_files):
     # Initialize the MTCNN detector
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     detector = MTCNN(steps_threshold=[0.6,0.7,0.9])
+    detector.to(device)
+    detector.eval()
 
     # Iterate over each video file
     for video_file in video_files:
@@ -55,10 +59,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_directory', help="The root directory containing video frames")
     args = parser.parse_args()
-
-    args.input_directory = '/Users/eranborenstein/pc/FaceSearch/configs'   
     video_files = get_files2process(args.input_directory, flt=lambda x:is_video(x))
-
     logging.info(f'detecting faces in {len(video_files)} videos')
     t0 = time.time()
     detect_faces(video_files)

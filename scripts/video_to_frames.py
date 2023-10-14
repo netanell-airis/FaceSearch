@@ -63,8 +63,7 @@ if __name__ == "__main__":
 
     # Parse the command-line arguments
     args = parser.parse_args()
-    args.input_directory = '/Users/eranborenstein/pc/FaceSearch/configs/'
-    
+   
     # Access the values of the arguments
     input_directory = args.input_directory    
     video_files = get_files2process(input_directory, flt=lambda x:is_video(x))
