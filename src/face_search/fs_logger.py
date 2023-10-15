@@ -16,19 +16,17 @@ def logger_init(logger_fname=None, level = logging.INFO):
         filename = f'{now:%Y%m%d.%H%M%S}.{method}.log'
         logger_fname = os.path.join(logger_root, filename)
 
-    # get the root logger
-    stdformattter = logging.Formatter('%(levelname)-8s %(message)s', datefmt='%m-%d %H:%M:%S')
-    fformatter = logging.Formatter('%(asctime)s %(module)-12s %(levelname)-8s %(message)s', datefmt='%m-%d %H:%M:%S')
-    logging.basicConfig(level=level) 
-
-
     logger = logging.getLogger()
+    # get the root logger
+    stdformattter = logging.Formatter('%(asctime)s %(levelname)s %(filename)s %(message)s', datefmt='%m-%d %H:%M:%S')
+    fformatter = logging.Formatter('%(asctime)s %(filename)-12s %(levelname)-8s %(message)s', datefmt='%m-%d %H:%M:%S')
+    logging.basicConfig(level=level, format='%(levelname)-8s %(message)s')
 
     # Add a handler to log to stdout
-    stdout_handler = logging.StreamHandler()
+    stdout_handler = logger.handlers[0] #logging.StreamHandler()
     stdout_handler.setLevel(level)
     stdout_handler.setFormatter(stdformattter)
-    logger.addHandler(stdout_handler)
+    #logger.addHandler(stdout_handler)
 
     # Add a handler to log to a file
     file_handler = logging.FileHandler(logger_fname)
@@ -36,7 +34,5 @@ def logger_init(logger_fname=None, level = logging.INFO):
     file_handler.setFormatter(fformatter)
     logger.addHandler(file_handler)
 
-    handlers = logging.getLogger().handlers
-    dbg = 1
 
 
