@@ -9,3 +9,4 @@ deepsort
 ipython
 dash 
 plotly
+pytorch-lightning

@@ -1,9 +1,22 @@
+import os
 from setuptools import setup, find_packages
+
+scripts=['video_to_frames.py',
+           'frames_to_faces.py',
+           'face_to_faceid.py',
+           'faces_to_embeddings.py',
+           'faceid_to_template.py']
+
+scripts = [os.path.join('scripts',x) for x in scripts]
+
 setup(
 	name='face_search',
 	version='1.0',
-	package_dir={"": "src"},
-	packages=find_packages("src"),
-	scripts=['video_to_frames.py', 'frames_to_faces.py','face_to_faceid.py','faces_to_embeddings.py','faceid_to_template.py'],
+	package_dir={"face_search": "src/face_search",
+              "utils_ds": "src/utils_ds",
+              "deep_sort": "src/deep_sort"},
+	packages=['face_search','utils_ds','deep_sort'],    
+    data_files=[('configs',['configs/video.mp4','configs/deep_sort.yaml']),
+                ('scripts',scripts)], 
 	include_package_data=True,
 )
