@@ -1,32 +1,36 @@
-from face_search.fs_logger import logger_init
-from face_search.utils import get_files2process, is_video
-import logging
-
-
-from utils_ds.parser import get_config
-from utils_ds.draw import draw_boxes
-from deep_sort import build_tracker
-from PIL import Image 
 import argparse
+import logging
 import os
+import sys
 import pandas as pd
 import time
 import numpy as np
-from deep_sort.sort.track import Track
+from PIL import Image 
 from tqdm import tqdm
+from face_search.fs_logger import logger_init
+import face_search.utils as utils
 from face_search.search_index import SearchIndex
-import sys
+import re 
 
-def build_dataset(video_list, corpus_dir):
-    logging.info(f'building a corpus from {len(video_list)}')
+def build_index(args):
+    """
+    needs video_list, corpus_dir
+    """
+    video_files = utils.get_video_files(args)
+    corpus_dir = args.output_directory
+    logging.info(f'building a corpus from {len(video_files)}')
     logging.info(f'saving the dataset in {corpus_dir}')
-    pipeline_dirs = [os.path.splitext(x)[0]+'.pipeline' for x in video_list]
+    pipeline_dirs = [os.path.splitext(x)[0]+'.pipeline' for x in video_files]
     pipeline_dirs = list(filter(lambda x:os.path.isdir(x), pipeline_dirs))
     corpus = SearchIndex.from_pipeline_outputs(pipeline_dirs,corpus_dir, 512)
 
 
-def build_template_db(corpus_dir):
-    from face_search.utils import get_gallery_templates
+def build_template_db(args):
+    """
+    requires corpus_dir
+    """
+    corpus_dir = args.corpus_directory
+
     corpus = SearchIndex(512)
     corpus.mode = 'a'
     corpus.corpus_dir = corpus_dir 
@@ -45,7 +49,7 @@ def build_template_db(corpus_dir):
             norms = vg.enorm.values 
             E_vid = E_vid * norms[:,np.newaxis]
             fid = vg.face_id.values
-            T = get_gallery_templates(fid, E_vid)
+            T = utils.get_gallery_templates(fid, E_vid)
             tid2fid = np.arange(int(fid.max()+1))
             tn = np.linalg.norm(T,axis=1)
             tid2fid = tid2fid[tn >0]
@@ -63,8 +67,10 @@ def build_template_db(corpus_dir):
         t_tbl.to_csv(fnames['t_tbl_fname'])
 
 
-def create_virtual_video(frames, video_dir):
-    import re 
+def create_virtual_video(args):
+    video_dir = args.output_directory
+    frames = utils.get_files2process(args.input_directory,
+                                     flt=lambda x:utils.is_img_fname(x))
     rname = re.compile(r'([A-Za-z0-9]+)_([A-Za-z0-9]+).')    
     frame_tbl = list()
     os.makedirs(video_dir, exist_ok=True)
@@ -86,34 +92,40 @@ def create_virtual_video(frames, video_dir):
     face_tbl.to_csv(os.path.join(video_dir, 'frames.csv'))
     logging.info(f'saved {len(face_tbl)} faces into {video_dir}')
 
-    
-        
 
-from face_search.utils import is_img_fname
-
+def update_index(args):
+    logging.info('not implmented')
+    return
 
 
 if __name__ == "__main__":
     logger_init()
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_directory', help="The root directory containing video frames")
-    parser.add_argument('--corpus_directory', help="The root directory to save the dataset")
-    parser.add_argument('--images_root', help="The root for all images we want to use for virtual video.")
+    parser.add_argument('--action',
+        help="action=['create_virtual_video','build_index','update_index']")
+    parser.add_argument('--input_directory',
+        help="The root directory containing video frames")
+    parser.add_argument('--output_directory',
+        help="The root directory to save the dataset")
     args = parser.parse_args()
 
-    if os.path.splitext(args.input_directory)[-1] == '.pipeline':
-        video_files = [args.input_directory]
-        args.corpus_directory = os.path.splitext(video_files[0])[0] + '.index'
-    else:
-        video_files = get_files2process(args.input_directory, flt=lambda x:is_video(x))
-        missing_faces = get_files2process(args.images_root, 
-                                      flt=is_img_fname)
-        video_dir = args.images_root + '.pipeline'
+    args.input_directory = '/Users/eranborenstein/data/missing_faces.pipeline'
+    args.output_directory = '/Users/eranborenstein/data/missing_faces.dataset'
+    args.action = 'build_index'
+
+
+    action_fn = {"create_virtual_video": create_virtual_video,
+              "build_index": build_index, 
+              "update_index": update_index}
+    if args.action not in action_fn:
+        logging.error(f'action={args.action} not implemented.')
+        sys.exit(-1)
+
+    logging.info(f'Running {args.action}')
+    logging.info(f'args={sys.argv}')
+
     t0 = time.time()
-    
-    # create_virtual_video(missing_faces, video_dir)
-    # build_template_db(args.corpus_directory)
-    build_dataset(video_files, args.corpus_directory)
+    action_fn[args.action](args)    
     t1 = time.time()
     logging.info(f'process took {t1-t0:.2f}secs')
 

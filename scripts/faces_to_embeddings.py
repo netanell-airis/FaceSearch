@@ -16,7 +16,7 @@ from face_search.utils import is_video_frame, get_video_process_dir
 from face_search.utils import is_video, get_files2process, is_video_face_roi
 from face_search.face_alignment.align import get_aligned_face
 from face_search.adanet import build_model
-
+from face_search import io
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 
@@ -71,6 +71,7 @@ def faces2embeddings(video_files):
     # mtcnn_model = mtcnn.MTCNN(device='cpu', crop_size=(112, 112))
     #device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     mtcnn_model = mtcnn.MTCNN(device='cpu', crop_size=(112, 112))
+    mtcnn_model.thresholds = [0.2, 0.3, 0.4]
 
     model = load_pretrained_model('ir_50')
     invalid_input = torch.zeros((1,3,112,112))
@@ -80,27 +81,28 @@ def faces2embeddings(video_files):
     for video_file in video_files:
         t0 = time.time()
         process_dir = get_video_process_dir(video_file)
-        db = pd.read_csv(os.path.join(process_dir, 'faces.csv'))
-        face_list = db[['frame_num','idx']].values.tolist()
+        face_tbl = io.load_table(process_dir, 'faces')
+        face_list = face_tbl[['frame_num','idx']].values.tolist()
         face_fnames = [f'frame_{fr:04d}_{idx:04d}.png' for fr, idx in face_list]
         face_fnames = [os.path.join(process_dir,x) for x in face_fnames]
         logging.info(f'working on video {video_file} with {len(face_list)} faces')
         face_list = list()
-        e_list = list()
         det_list = list()
         aligned_faces_db = list()
-        for ix,row in tqdm(db.iterrows()):
+        for ix,row in tqdm(face_tbl.iterrows()):
             frame_num = int(row.frame_num)
             idx = int(row.idx)
             fname = os.path.join(process_dir,
                                  f'face_{frame_num:05d}_{idx:04d}.png')
             # frame_num = int(is_video_frame(input_image_path))
             # Load the input image
+            
             aligned_face = get_aligned_face(mtcnn_model,fname)
             det_list.append(aligned_face is not None)
-            if det_list[-1] is False:
-                aligned_face = Image.new(mode="RGB", size=(112, 112), color=(128,128,128))
-                # aligned_face.fill(128)
+            if not det_list[-1]:
+                logging.warn(f'could not align {fname}')
+                aligned_face = Image.open(fname)
+                aligned_face = aligned_face.resize((112,112))
             
             bgr_tensor_input = to_input(aligned_face)
             aligned_faces_db.append(bgr_tensor_input)
@@ -122,13 +124,14 @@ def faces2embeddings(video_files):
         
         e = torch.concat([x[0] for x in elist])
         enorm = torch.concat([x[1] for x in elist])
-        db['aligned'] = det_list 
-        db['enorm'] = enorm
-        db.to_csv(os.path.join(process_dir,'faces.csv'))
+        face_tbl['aligned'] = det_list 
+        face_tbl['enorm'] = enorm
+        io.save_table(process_dir, face_tbl, "faces")
+        face_tbl.to_csv(os.path.join(process_dir,'faces.csv'))
         fname = os.path.join(process_dir, 'embeddings.pth')
         torch.save(e, fname)
         t1 = time.time()
-        logging.info(f'finished detecting {len(db)} faces in {t1-t0}secs')
+        logging.info(f'finished detecting {len(face_tbl)} faces in {t1-t0}secs')
 
 
 
@@ -140,10 +143,8 @@ if __name__ == "__main__":
     parser.add_argument('--input_directory', help="The root directory containing video frames")
     args = parser.parse_args()
 
-    if os.path.splitext(args.input_directory)[-1] == '.pipeline':
-        video_files = [args.input_directory]
-    else:
-        video_files = get_files2process(args.input_directory, flt=lambda x:is_video(x))
+    from face_search import utils 
+    video_files = utils.get_video_files(args)
 
     logging.info(f'detecting faces in {len(video_files)} videos')
     t0 = time.time()

@@ -4,14 +4,14 @@
 #output: output directgory containing each video frames in a different directory
 import logging
 import time
-
+import pandas as pd
 import cv2
 import os
 import argparse
 from face_search.fs_logger import logger_init
 from face_search.utils import get_video_process_dir
 from face_search.utils import is_video, get_files2process
-
+from face_search import io
 def extract_frames(video_files):
     # List all video files in the input directory
 
@@ -30,6 +30,7 @@ def extract_frames(video_files):
         # Initialize a frame counter
         frame_count = 0
         t0 = time.time()
+        frame_list = list()
 
         while True:
             # Read a frame from the video
@@ -39,9 +40,9 @@ def extract_frames(video_files):
                 break
 
             # Construct the output file name
-            frame_filename = os.path.join(process_dir, 
-                                          f'frame_{frame_count:04d}.png')
-
+            base_name = f'frame_{frame_count:04d}.png'
+            frame_filename = os.path.join(process_dir,base_name) 
+            frame_list.append((frame_count, base_name))
             # Save the frame as an image file
             cv2.imwrite(frame_filename, frame)
 
@@ -52,6 +53,8 @@ def extract_frames(video_files):
         t1 = time.time()
         logging.info(f'Extracted {frame_count} frames from {video_file}.')
         logging.info(f'processing time={t1-t0}')
+        tbl = pd.DataFrame(frame_list, columns=['frame_num','file_name'])
+        io.save_table(process_dir, tbl, "frames")
         
 
 if __name__ == "__main__":
@@ -65,7 +68,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
    
     # Access the values of the arguments
+    from face_search.utils import get_video_files
     input_directory = args.input_directory    
-    video_files = get_files2process(input_directory, flt=lambda x:is_video(x))
+    video_files = get_video_files(args)
 
     extract_frames(video_files)

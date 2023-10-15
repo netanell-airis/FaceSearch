@@ -15,6 +15,7 @@ import torch.backends.cudnn as cudnn
 from retinaface import RetinaFace
 from deepface import DeepFace
 from deepface.commons import functions
+from face_search import io
 # face detector
 #from facenet_pytorch import MTCNN
 
@@ -109,9 +110,7 @@ class VideoTracker(object):
             logging.info(f'Frame {frame_num} Done in {t1-t0:.3f}secs')
             avg_fps.append(t1 - t0)
 
-            if len(outputs) > 0:
-                
-                tracks = self.deepsort.tracker.tracks
+            if len(outputs) > 0:                
                 bbox_xyxy = outputs[:, :4]
                 bbox_xywh = xyxy2xywh(bbox_xyxy)
                 b1 = db_frame[['x','y','w','h']].values 
@@ -184,11 +183,16 @@ def xyxy2xywh(x):
     return y
 
 def faces2faceids(video_files,args):
-    for video_fname in video_files:
-        # args.input_path = video_fname 
-        # output_path = os.path.splitext(video_fname)[0] + '.faces'
-        # output_path = os.path.join(out_dir, os.path.split(output_path)[1])
-        # args.save_path = output_path 
+    for video_fname in video_files:   
+        video_root = os.path.splitext(video_fname)[0] + '.pipeline'     
+        face_tbl = io.load_table(video_root, "faces")
+        if 'name' in face_tbl:
+            names = sorted(list(set(face_tbl.name)))
+            name2id = dict(zip(names, np.arange(len(names))))
+            face_tbl['face_id'] = face_tbl.name.apply(lambda x:name2id[x])
+            io.save_table(video_root, face_tbl, 'face_id')
+            continue
+
         with VideoTracker(args, video_fname) as vdo_trk:
             vdo_trk.run()
 
@@ -207,7 +211,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    video_files = get_files2process(args.input_directory, flt=lambda x:is_video(x))
+    logging.info(f'input_directory={args.input_directory}')
+
+    from face_search import utils
+    video_files = utils.get_video_files(args)
 
     logging.info(f'detecting faces in {len(video_files)} videos')
     t0 = time.time()
