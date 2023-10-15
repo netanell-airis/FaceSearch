@@ -140,7 +140,10 @@ if __name__ == "__main__":
     parser.add_argument('--input_directory', help="The root directory containing video frames")
     args = parser.parse_args()
 
-    video_files = get_files2process(args.input_directory, flt=lambda x:is_video(x))
+    if os.path.splitext(args.input_directory)[-1] == '.pipeline':
+        video_files = [args.input_directory]
+    else:
+        video_files = get_files2process(args.input_directory, flt=lambda x:is_video(x))
 
     logging.info(f'detecting faces in {len(video_files)} videos')
     t0 = time.time()

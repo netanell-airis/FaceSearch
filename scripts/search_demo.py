@@ -4,8 +4,6 @@ import datetime
 import os
 import sys
 from PIL import Image
-from deepface import DeepFace
-from deepface.DeepFace import functions
 import cv2 
 import numpy as np
 import torch 
@@ -75,8 +73,45 @@ def extract_query_sig(args):
     db0 = db[ix]
     
 
+def search_missing(missing_db_root, index_root, K=10):
+    corpus = SearchIndex(512)
+    corpus.corpus_dir = index_root 
+    query = SearchIndex(512)
+    query.corpus_dir = missing_db_root 
+
+    with corpus as sig_tbl:
+        enorm = corpus.t_tbl.enorm.values
+        ns = enorm.size 
+        sigs = sig_tbl['templates'][:ns]
+        nsigs = sigs / enorm[:,np.newaxis]        
+        with query as qtbl:
+            qfaces = query.face_tbl 
+            n0 = len(qfaces)
+            cos_max = np.zeros((n0,K))
+            cos_amax = np.zeros((n0,K),dtype=np.int32)
+            qnorm = query.face_tbl.enorm.values
+            for i, g in query.face_tbl.groupby(by='face_id'):
+                ix = np.array(g.index)
+                m0 = len(g)                
+                qsigs = qtbl['embeddings'][ix]
+                qnsigs = qsigs / qnorm[ix][:,np.newaxis]
+                
+                cos_sim = nsigs @ qnsigs.transpose()
+                for k in range(K):
+                    cos_max[ix,k] = cos_sim.max(axis=0)
+                    cos_amax[ix,k] = cos_sim.argmax(axis=0)
+                    cos_sim[cos_amax[ix,k],np.arange(m0)] = 0
+                score = cos_max[ix,0].max()
+                logging.info(f'face_id={g.face_id},num_faces={m0},max={score:.3f}')
+    return cos_max, cos_amax
+
+
+
 
 def debug_sigs(args):
+    from deepface import DeepFace
+    from deepface.DeepFace import functions
+
     fnames = [args.query_img_path]
     d = torch.load(args.input_path)
     db = d['db']
@@ -139,6 +174,13 @@ if __name__ == '__main__':
     logger_init()
     #import logging
     logger = logging.getLogger()
+
+    root = os.environ['HOME']
+    corpus_dir = '/Users/eranborenstein/data/corpus.dataset'
+    query_dir = '/Users/eranborenstein/data/missing_faces.dataset'
+    search_missing(query_dir, corpus_dir)
+
+    search_missing('')
     logger.info(f'command line={sys.argv}')
     logging.info('hello')
     index_files = get_files2process(args.db_root, flt=filter_index_files) #[:4]

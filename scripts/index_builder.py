@@ -12,18 +12,10 @@ import os
 import pandas as pd
 import time
 import numpy as np
-import warnings
-import cv2
 from deep_sort.sort.track import Track
-import torch
-import torch.backends.cudnn as cudnn
-from retinaface import RetinaFace
-from deepface import DeepFace
-from deepface.commons import functions
+from tqdm import tqdm
 from face_search.search_index import SearchIndex
-
 import sys
-
 
 def build_dataset(video_list, corpus_dir):
     logging.info(f'building a corpus from {len(video_list)}')
@@ -71,18 +63,33 @@ def build_template_db(corpus_dir):
         t_tbl.to_csv(fnames['t_tbl_fname'])
 
 
+def create_virtual_video(frames, video_dir):
+    import re 
+    rname = re.compile(r'([A-Za-z0-9]+)_([A-Za-z0-9]+).')    
+    frame_tbl = list()
+    os.makedirs(video_dir, exist_ok=True)
+    for frame_num,img_dir in tqdm(enumerate(sorted(frames)),desc='virt-video'):
+        img = Image.open(img_dir)
+        fid = os.path.splitext(os.path.split(img_dir)[-1])[0]
+        r0 = rname.findall(fid)
+        if r0 is None:
+            logging.warning(f'could not parse {img_dir}')
+            continue
+        first,last = r0[0]
+        fid = f'{first}.{last}'
+        new_fname = os.path.join(video_dir,f'frame_{frame_num:04d}.png')
 
+        first, last, _ = new_fname.split('_')
+        frame_tbl.append((frame_num, img_dir,fid))
+        img.save(new_fname)
+    face_tbl = pd.DataFrame(frame_tbl, columns=['frame_num','fname','name'])
+    face_tbl.to_csv(os.path.join(video_dir, 'frames.csv'))
+    logging.info(f'saved {len(face_tbl)} faces into {video_dir}')
 
-def faceid2templates(corpus_dir):
-    corpus = SearchIndex(512)
-    corpus.corpus_dir = corpus_dir 
-    corpus.mode = 'r'
-    with corpus as sigs:
-        E = sigs['embeddings']
-        face_tbl = corpus.face_dbl
-        video_tbl = corpus.video_tbl 
-        norm = face_tbl.enorm 
-        dbg = 1
+    
+        
+
+from face_search.utils import is_img_fname
 
 
 
@@ -91,12 +98,22 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_directory', help="The root directory containing video frames")
     parser.add_argument('--corpus_directory', help="The root directory to save the dataset")
+    parser.add_argument('--images_root', help="The root for all images we want to use for virtual video.")
     args = parser.parse_args()
-    video_files = get_files2process(args.input_directory, flt=lambda x:is_video(x))
 
+    if os.path.splitext(args.input_directory)[-1] == '.pipeline':
+        video_files = [args.input_directory]
+        args.corpus_directory = os.path.splitext(video_files[0])[0] + '.index'
+    else:
+        video_files = get_files2process(args.input_directory, flt=lambda x:is_video(x))
+        missing_faces = get_files2process(args.images_root, 
+                                      flt=is_img_fname)
+        video_dir = args.images_root + '.pipeline'
     t0 = time.time()
-    build_template_db(args.corpus_directory)
-    # build_dataset(video_files, args.corpus_directory)
+    
+    # create_virtual_video(missing_faces, video_dir)
+    # build_template_db(args.corpus_directory)
+    build_dataset(video_files, args.corpus_directory)
     t1 = time.time()
     logging.info(f'process took {t1-t0:.2f}secs')
 

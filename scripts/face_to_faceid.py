@@ -213,5 +213,5 @@ if __name__ == "__main__":
     t0 = time.time()
     faces2faceids(video_files, args)
     t1 = time.time()
-    logging.info(f'process took {t1-t0:.2f}secs')
+    logging.info(f'process took {t1-t0}secs')
 
