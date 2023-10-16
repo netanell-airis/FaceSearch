@@ -84,17 +84,17 @@ def search_missing(missing_db_root, index_root, K=10):
         ns = enorm.size 
         sigs = sig_tbl['templates'][:ns]
         nsigs = sigs / enorm[:,np.newaxis]        
+        file_name_list = list()
         with query as qtbl:
-            qfaces = query.face_tbl 
-            n0 = len(qfaces)
+            n0 = len(query.face_tbl)
             cos_max = np.zeros((n0,K))
             cos_amax = np.zeros((n0,K),dtype=np.int32)
             qnorm = query.face_tbl.enorm.values
             for i, g in query.face_tbl.groupby(by='face_id'):
                 ix = np.array(g.index)
                 m0 = len(g)                
-                qsigs = qtbl['embeddings'][ix]
-                qnsigs = qsigs / qnorm[ix][:,np.newaxis]
+                qnsigs = qtbl['embeddings'][ix]
+                # qnsigs = qsigs / qnorm[ix][:,np.newaxis]
                 
                 cos_sim = nsigs @ qnsigs.transpose()
                 for k in range(K):
@@ -102,9 +102,94 @@ def search_missing(missing_db_root, index_root, K=10):
                     cos_amax[ix,k] = cos_sim.argmax(axis=0)
                     cos_sim[cos_amax[ix,k],np.arange(m0)] = 0
                 score = cos_max[ix,0].max()
-                logging.info(f'face_id={g.face_id},num_faces={m0},max={score:.3f}')
-    return cos_max, cos_amax
+                fid = int(g.iloc[0].face_id)
+                logging.info(f'face_id={fid},num_faces={m0},max={score:.3f}')
+        cos_max_org = cos_max.copy()
+        for i in range(5):
+            score = cos_max.max()
+            # qi points to matching query
+            qi, qj = np.where(cos_max==score)
+            cos_max[qi,:] = 0
+            match_query = query.face_tbl.loc[qi]
+            # ti is pointing to matching template ()
+            ti = cos_amax[qi,qj]
+            video_id, face_id = corpus.t_tbl.loc[ti,['video_id','tid2fid']].values.tolist()[0]
+            face_id = int(face_id)
+            video_id = int(video_id)
+            video_fname = corpus.video_tbl.loc[video_id].video_fname    
+            t = corpus.face_tbl[(corpus.face_tbl.video_id==video_id) & (corpus.face_tbl.face_id == face_id)]
+            for ix, r in t.iterrows():
+                frame_num = int(r.frame_num)
+                fname = f'faceid_{face_id:04d}_{frame_num:04d}.png'
+                fname = os.path.join(video_fname, fname)
+                file_name_list.append(fname)
+                name = match_query.name #.tolist()[0]
+                logging.info(f'missing {name}')
+                logging.info(f'{fname}')
+                logging.info(f'cosine_sim={score}')
+                break
+        with open('/tmp/files.txt','w') as fh:
+            fh.writelines('\n'.join(file_name_list))
+    return cos_max_org, cos_amax
 
+def search_missing_usig_embeddings(missing_db_root, index_root, K=10):
+    corpus = SearchIndex(512)
+    corpus.corpus_dir = index_root 
+    query = SearchIndex(512)
+    query.corpus_dir = missing_db_root 
+
+    with corpus as sig_tbl:
+        enorm = corpus.t_tbl.enorm.values
+        ns = enorm.size 
+        sigs = sig_tbl['templates'][:ns]
+        nsigs = sigs / enorm[:,np.newaxis]        
+        file_name_list = list()
+        with query as qtbl:
+            n0 = len(query.face_tbl)
+            cos_max = np.zeros((n0,K))
+            cos_amax = np.zeros((n0,K),dtype=np.int32)
+            qnorm = query.face_tbl.enorm.values
+            for i, g in query.face_tbl.groupby(by='face_id'):
+                ix = np.array(g.index)
+                m0 = len(g)                
+                qnsigs = qtbl['embeddings'][ix]
+                # qnsigs = qsigs / qnorm[ix][:,np.newaxis]
+                
+                cos_sim = nsigs @ qnsigs.transpose()
+                for k in range(K):
+                    cos_max[ix,k] = cos_sim.max(axis=0)
+                    cos_amax[ix,k] = cos_sim.argmax(axis=0)
+                    cos_sim[cos_amax[ix,k],np.arange(m0)] = 0
+                score = cos_max[ix,0].max()
+                fid = int(g.iloc[0].face_id)
+                logging.info(f'face_id={fid},num_faces={m0},max={score:.3f}')
+        cos_max_org = cos_max.copy()
+        for i in range(5):
+            score = cos_max.max()
+            # qi points to matching query
+            qi, qj = np.where(cos_max==score)
+            cos_max[qi,:] = 0
+            match_query = query.face_tbl.loc[qi]
+            # ti is pointing to matching template ()
+            ti = cos_amax[qi,qj]
+            video_id, face_id = corpus.t_tbl.loc[ti,['video_id','tid2fid']].values.tolist()[0]
+            face_id = int(face_id)
+            video_id = int(video_id)
+            video_fname = corpus.video_tbl.loc[video_id].video_fname    
+            t = corpus.face_tbl[(corpus.face_tbl.video_id==video_id) & (corpus.face_tbl.face_id == face_id)]
+            for ix, r in t.iterrows():
+                frame_num = int(r.frame_num)
+                fname = f'faceid_{face_id:04d}_{frame_num:04d}.png'
+                fname = os.path.join(video_fname, fname)
+                file_name_list.append(fname)
+                name = match_query.name #.tolist()[0]
+                logging.info(f'missing {name}')
+                logging.info(f'{fname}')
+                logging.info(f'cosine_sim={score}')
+                break
+        with open('/tmp/files.txt','w') as fh:
+            fh.writelines('\n'.join(file_name_list))
+    return cos_max_org, cos_amax
 
 
 
@@ -176,7 +261,7 @@ if __name__ == '__main__':
     logger = logging.getLogger()
 
     root = os.environ['HOME']
-    corpus_dir = '/Users/eranborenstein/data/corpus.dataset'
+    corpus_dir = '/Users/eranborenstein/data/Videos_Batch_3.dataset'
     query_dir = '/Users/eranborenstein/data/missing_faces.dataset'
     search_missing(query_dir, corpus_dir)
 
