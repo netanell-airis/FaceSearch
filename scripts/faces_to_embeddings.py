@@ -93,6 +93,7 @@ def faces2embeddings_gil(video_files):
         db['enorm'] = enorm
         db.to_csv(os.path.join(process_dir, 'faces.csv'))
         fname = os.path.join(process_dir, 'embeddings.pth')
+        logging.info(f'saving {e.shape[0]}x{e.shape[1]} embeddings into {fname}')
         torch.save(e, fname)
         t1 = time.time()
         logging.info(f'finished detecting {len(db)} faces in {t1 - t0}secs')
@@ -226,7 +227,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_directory', help="The root directory containing video frames")
     args = parser.parse_args()
-    args.input_directory = '/Users/eranborenstein/data/missing_faces.pipeline'
 
     from face_search import utils 
     video_files = utils.get_video_files(args)

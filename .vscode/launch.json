@@ -12,7 +12,8 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["--input_directory",
-                 "${userHome}/data/debug/20231007_072338_hamza20300_159830.pipeline",                
+                 "${userHome}/data/missing_faces.pipeline",
+                 "--mp4",
             ]
         },
         {
@@ -34,7 +35,7 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["--input_directory",
-                 "${userHome}/data/debug/20231007_072338_hamza20300_159830.pipeline",
+                 "${userHome}/data/missing_faces.pipeline",
             ]
         },
 

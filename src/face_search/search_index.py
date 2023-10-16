@@ -87,7 +87,7 @@ class SearchIndex:
         face_tbl_list = list()
         i0 = 0
         for vid, root_dir in enumerate(pipeline_dirs):
-            face_tbl = io.load_table(root_dir,'face_id')
+            face_tbl = io.load_table(root_dir,'faces')
             if face_tbl is None:
                 logging.warn(f'could not find face_id.csv in {root_dir}')
                 continue

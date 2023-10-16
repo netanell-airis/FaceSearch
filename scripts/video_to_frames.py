@@ -18,6 +18,7 @@ from face_search import io
 
 def extract_faces_from_videos(video_files):
     for video_file in video_files:
+        video_file = os.path.splitext(video_file)[0] + '.mp4'
         process_dir = get_video_process_dir(video_file)
         logging.info(f'working on {video_file}')
         face_tbl = detect_in_batches(video_file)
@@ -58,7 +59,7 @@ def extract_frames(video_files):
             frame_list.append((frame_count, base_name))
             # Save the frame as an image file
             cv2.imwrite(frame_filename, frame)
-            
+
 
             frame_count += 1
 
@@ -86,5 +87,5 @@ if __name__ == "__main__":
     input_directory = args.input_directory    
     video_files = get_video_files(args)
 
-    # extract_frames(video_files)
-    extract_faces_from_videos(video_files)
+    extract_frames(video_files)
+    # extract_faces_from_videos(video_files)
