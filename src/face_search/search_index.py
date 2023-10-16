@@ -1,3 +1,6 @@
+import logging
+import os
+import h5py
 import numpy as np
 import pandas as pd
 from face_search.utils import cosine_distance, get_gallery_templates
@@ -5,13 +8,36 @@ import torch
 from face_search.utils import copy_partial_dict, extract_signatures
 from PIL import Image
 from tqdm import tqdm
+from face_search import io
 class SearchIndex:
     def __init__(self, dim=512):
+        self.corpus_dir = None
+        self.sigs = None
+        self.tensor_db = None
+        self.vid2fname = list()
         self.index_files = list()
         self.embedding = np.zeros((0, dim))
         self.templates = np.zeros((0, dim))
-        self.db = pd.DataFrame()
         self.face_list = list()
+        self.mode = 'r'
+        self.face_tbl = None 
+        self.video_tbl = None 
+        self.t_tbl = None 
+
+    def __enter__(self):
+        fnames = self.get_db_fnames(self.corpus_dir)
+        if os.path.isfile(fnames['sigs_store_fname']):
+            self.sigs = h5py.File(fnames['sigs_store_fname'],self.mode)
+        if os.path.isfile(fnames['t_tbl_fname']):
+            self.t_tbl = pd.read_csv(fnames['t_tbl_fname'])
+        self.face_tbl = pd.read_csv(fnames['face_tbl_fname'])
+        self.video_tbl = pd.read_csv(fnames['video_tbl_fname'])
+        return self.sigs
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.sigs is not None:
+            self.sigs.close()
+
 
     @classmethod 
     def from_index_files(cls,index_files):
@@ -44,6 +70,64 @@ class SearchIndex:
         index.db = pd.concat(db_list, axis=0)
         index.face_list = face_list
         return index
+    
+    @staticmethod
+    def from_pipeline_outputs(pipeline_dirs, corpus_dir, dim=512):
+        """
+        this function collects all data from 
+        processed pipelines to create an index
+        
+        """
+        dim = int(dim)
+        os.makedirs(corpus_dir, exist_ok=True)       
+        fnames = SearchIndex.get_db_fnames(corpus_dir)
+        h5 = h5py.File(fnames['sigs_store_fname'], 'w')
+        h5.create_dataset('embeddings',(4096, dim),maxshape=(None,dim),dtype=np.float32)        
+        h5.create_dataset('templates',(4096, dim),maxshape=(None,dim),dtype=np.float32)        
+        face_tbl_list = list()
+        i0 = 0
+        for vid, root_dir in enumerate(pipeline_dirs):
+            face_tbl = io.load_table(root_dir,'face_id')
+            if face_tbl is None:
+                logging.warn(f'could not find face_id.csv in {root_dir}')
+                continue
+            # db_fname = os.path.join(root_dir, 'face_ids.csv')
+            e_fname = os.path.join(root_dir, 'embeddings.pth')
+            # face_tbl = pd.read_csv(db_fname)
+            E = torch.load(e_fname)
+            i1 = i0 + E.shape[0]
+            if i1 > h5['embeddings'].shape[0]:
+                h5['embeddings'].resize((i1*2, dim))
+            h5['embeddings'][i0:i1,:] = E
+            i0 = i1
+            face_tbl['video_id'] = vid
+            face_tbl_list.append(face_tbl)
+
+        
+        face_tbl = pd.concat(face_tbl_list,axis=0)
+        face_tbl.to_csv(fnames['face_tbl_fname'])
+        db_videos = pd.DataFrame(pipeline_dirs, columns=['video_fname'])
+        db_videos.to_csv(fnames['video_tbl_fname'])
+
+        h5.close()
+        corpus = SearchIndex(dim=dim)
+        corpus.corpus_dir = corpus_dir 
+        return corpus 
+
+    @staticmethod
+    def get_db_fnames(corpus_dir):
+        return dict(
+            face_tbl_fname = os.path.join(corpus_dir,'faces_db.csv'),
+            video_tbl_fname = os.path.join(corpus_dir, 'videos.csv'),
+            t_tbl_fname = os.path.join(corpus_dir, 'templates.csv'),
+            sigs_store_fname = os.path.join(corpus_dir, 'sigs.pth'),
+        )
+
+
+
+            
+
+            
 
     def query_2_corpus_distance(self, query_templates):
         """
