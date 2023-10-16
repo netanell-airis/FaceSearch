@@ -1,5 +1,5 @@
-from utils_ds.parser import get_config
-from utils_ds.draw import draw_boxes
+from deep_sort.parser import get_config
+# from deep_sort.draw import draw_boxes
 from deep_sort import build_tracker
 from PIL import Image 
 import argparse
@@ -154,6 +154,7 @@ class VideoTracker(object):
         t_end = time.time()
         dt = t_end - t_start
         logging.info(f'Total time {dt:.3f}s')
+        io.save_table(self.root_dir, self.db, "faces")
         fname = os.path.join(self.root_dir,'face_ids.csv')
         logging.info(f'saving updated faces in {fname}')
         self.db.to_csv(fname)
