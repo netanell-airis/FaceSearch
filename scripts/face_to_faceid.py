@@ -153,11 +153,9 @@ class VideoTracker(object):
             idx_frame += 1                                                            
         t_end = time.time()
         dt = t_end - t_start
-        logging.info(f'Total time {dt:.3f}s')
         io.save_table(self.root_dir, self.db, "faces")
-        fname = os.path.join(self.root_dir,'face_ids.csv')
-        logging.info(f'saving updated faces in {fname}')
-        self.db.to_csv(fname)
+        logging.info(f'Total time {dt:.3f}s')
+
 
     def image_track(self, im0, db_frame):
         """
@@ -183,15 +181,16 @@ def xyxy2xywh(x):
     y[:, 3] = x[:, 3] - x[:, 1]  # height
     return y
 
+
 def faces2faceids(video_files,args):
     for video_fname in video_files:   
         video_root = os.path.splitext(video_fname)[0] + '.pipeline'     
         face_tbl = io.load_table(video_root, "faces")
-        if 'name' in face_tbl:
-            names = sorted(list(set(face_tbl.name)))
+        if 'person_id' in face_tbl:
+            names = sorted(list(set(face_tbl['person_id'])))
             name2id = dict(zip(names, np.arange(len(names))))
-            face_tbl['face_id'] = face_tbl.name.apply(lambda x:name2id[x])
-            io.save_table(video_root, face_tbl, 'face_id')
+            face_tbl['face_id'] = face_tbl['person_id'].apply(lambda x:name2id[x])
+            io.save_table(video_root, face_tbl, 'faces')
             continue
 
         with VideoTracker(args, video_fname) as vdo_trk:

@@ -10,6 +10,7 @@ from tqdm import tqdm
 from face_search.fs_logger import logger_init
 import face_search.utils as utils
 from face_search.search_index import SearchIndex
+from face_search import io
 import re 
 
 def build_index(args):
@@ -91,8 +92,8 @@ def create_virtual_video(args):
         frame_tbl.append((frame_num, img_dir,person_id))
         img = img.convert('RGB')
         img.save(new_fname)
-    face_tbl = pd.DataFrame(frame_tbl, columns=['frame_num','fname','name'])
-    face_tbl.to_csv(os.path.join(video_dir, 'frames.csv'))
+    face_tbl = pd.DataFrame(frame_tbl, columns=['frame_num','fname','peron_id'])
+    io.save_table(video_dir,face_tbl, 'frames')
     logging.info(f'saved {len(face_tbl)} faces into {video_dir}')
 
 

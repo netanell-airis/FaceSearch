@@ -14,20 +14,6 @@ from face_search import io
 import torch
 
 
-# import os
-# import logging
-# import time
-# import re
-# import pandas as pd
-# import PIL.Image
-# from mtcnn import MTCNN
-# import cv2
-# import argparse
-# from face_search.fs_logger import logger_init
-# from face_search.utils import is_video_frame, get_video_process_dir
-# from face_search.utils import is_video, get_files2process
-# import torch
-
 def detect_faces_gil(video_files):
     # Initialize the MTCNN detector
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
@@ -78,9 +64,9 @@ def detect_faces_gil(video_files):
         
         db = pd.DataFrame(face_list, columns = ['frame_num','idx','confidence', 'x','y','w','h','landmarks'])
         frame_tbl = io.load_table(process_dir, 'frames')
-        if frame_tbl is not None:
+        if (frame_tbl is not None) and 'person_id' in frame_tbl:
+            logging.info('adding person_id info')
             db = db.merge(frame_tbl, on='frame_num', how='left')
-            logging.info('adding faceid info')
 
         logging.info(f'finished detecting {len(db)} faces for video')
         io.save_table(process_dir, db, 'faces')

@@ -12,6 +12,19 @@ from face_search.fs_logger import logger_init
 from face_search.utils import get_video_process_dir
 from face_search.utils import is_video, get_files2process
 from face_search import io
+
+from face_search.face_detector import detect_in_batches
+from face_search import io
+
+def extract_faces_from_videos(video_files):
+    for video_file in video_files:
+        process_dir = get_video_process_dir(video_file)
+        logging.info(f'working on {video_file}')
+        face_tbl = detect_in_batches(video_file)
+        io.save_table(process_dir, face_tbl,'faces')
+
+
+   
 def extract_frames(video_files):
     # List all video files in the input directory
 
@@ -45,6 +58,7 @@ def extract_frames(video_files):
             frame_list.append((frame_count, base_name))
             # Save the frame as an image file
             cv2.imwrite(frame_filename, frame)
+            
 
             frame_count += 1
 
@@ -72,4 +86,5 @@ if __name__ == "__main__":
     input_directory = args.input_directory    
     video_files = get_video_files(args)
 
-    extract_frames(video_files)
+    # extract_frames(video_files)
+    extract_faces_from_videos(video_files)
