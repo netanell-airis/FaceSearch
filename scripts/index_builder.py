@@ -78,17 +78,18 @@ def create_virtual_video(args):
     os.makedirs(video_dir, exist_ok=True)
     for frame_num,img_dir in tqdm(enumerate(sorted(frames)),desc='virt-video'):
         img = Image.open(img_dir)
-        fid = os.path.splitext(os.path.split(img_dir)[-1])[0]
-        r0 = rname.findall(fid)
+        person_id = os.path.splitext(os.path.split(img_dir)[-1])[0]
+        r0 = rname.findall(person_id)
         if r0 is None:
             logging.warning(f'could not parse {img_dir}')
             continue
         first,last = r0[0]
-        fid = f'{first}.{last}'
+        person_id = f'{first}.{last}'
         new_fname = os.path.join(video_dir,f'frame_{frame_num:04d}.png')
 
         first, last, _ = new_fname.split('_')
-        frame_tbl.append((frame_num, img_dir,fid))
+        frame_tbl.append((frame_num, img_dir,person_id))
+        img = img.convert('RGB')
         img.save(new_fname)
     face_tbl = pd.DataFrame(frame_tbl, columns=['frame_num','fname','name'])
     face_tbl.to_csv(os.path.join(video_dir, 'frames.csv'))
@@ -111,10 +112,10 @@ if __name__ == "__main__":
         help="The root directory to save the dataset")
     args = parser.parse_args()
 
-    if 'Users' in os.environ['HOME']:
-        args.input_directory = '/Users/eranborenstein/data/missing_faces.pipeline'
-        args.output_directory = '/Users/eranborenstein/data/missing_faces.dataset'
-        args.action = 'build_index'
+    # if 'Users' in os.environ['HOME']:
+    #     args.input_directory = '/Users/eranborenstein/data/missing_faces.pipeline'
+    #     args.output_directory = '/Users/eranborenstein/data/missing_faces.dataset'
+    #     args.action = 'build_index'
 
 
     action_fn = {"create_virtual_video": create_virtual_video,

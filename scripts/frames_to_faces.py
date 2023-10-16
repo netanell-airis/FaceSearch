@@ -77,8 +77,13 @@ def detect_faces_gil(video_files):
                 face_list.append((frame_num, i, confidence, x, y, width, height, landmarks))
         
         db = pd.DataFrame(face_list, columns = ['frame_num','idx','confidence', 'x','y','w','h','landmarks'])
-        db.to_csv(os.path.join(process_dir,'faces.csv'))
+        frame_tbl = io.load_table(process_dir, 'frames')
+        if frame_tbl is not None:
+            db = db.merge(frame_tbl, on='frame_num', how='left')
+            logging.info('adding faceid info')
+
         logging.info(f'finished detecting {len(db)} faces for video')
+        io.save_table(process_dir, db, 'faces')
 
 
 

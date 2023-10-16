@@ -69,6 +69,8 @@ def faces2embeddings_gil(video_files):
             aligned_face.save(out_fname)
             det_list.append(aligned_face is not None)
             bgr_tensor_input = to_input(aligned_face)
+            if bgr_tensor_input.shape[1]> 3:
+                dbg = 1
             aligned_faces_db.append(bgr_tensor_input)
 
         i0 = 0
@@ -224,6 +226,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_directory', help="The root directory containing video frames")
     args = parser.parse_args()
+    args.input_directory = '/Users/eranborenstein/data/missing_faces.pipeline'
 
     from face_search import utils 
     video_files = utils.get_video_files(args)

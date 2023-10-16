@@ -247,3 +247,82 @@ class FaceDetector:
             # corners = cv2.goodFeaturesToTrack(face_gray, 10,0.01,5)
             frame_results.append(res_dict)
         return frame_results, faces
+
+def detect_in_batches(video_fname):
+    from facenet_pytorch import MTCNN
+    import cv2
+    from PIL import Image
+    import numpy as np
+    from matplotlib import pyplot as plt
+    from tqdm import tqdm
+    import torch 
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+
+    # v_cap = cv2.VideoCapture('20231007_072338_hamza20300_159830.mp4')
+    v_cap = cv2.VideoCapture(video_fname)
+    v_len = int(v_cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    mtcnn = MTCNN(margin=20, keep_all=True, post_process=False, device=device)
+
+    # Loop through video
+    batch_size = 4
+    frames = []
+    boxes = []
+    landmarks = []
+    frame_nums = []
+    scores = []
+    frame_offset = 0
+    
+    for i in tqdm(range(v_len)):
+        # Load frame
+        success, frame = v_cap.read()
+        if not success:
+            continue
+
+        # Add to batch
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frames.append(Image.fromarray(frame))        
+
+        # When batch is full, detect faces and reset batch list
+        if len(frames) >= batch_size:
+            batch_boxes, det_scores, batch_landmarks = mtcnn.detect(frames, landmarks=True)
+            boxes.extend(batch_boxes)
+            landmarks.extend(batch_landmarks)
+            scores.extend(det_scores)
+            frame_nums.extend([np.ones(len(det_scores[i]))*i+frame_offset for i in range(len(det_scores))])
+            frame_offset += len(det_scores)
+            frames = list()
+
+    if len(frames):
+        batch_boxes, det_scores, batch_landmarks = mtcnn.detect(frames, landmarks=True)
+        boxes.extend(batch_boxes)
+        landmarks.extend(batch_landmarks)
+        scores.extend(det_scores)        
+        frame_nums.extend([np.ones(len(det_scores[i]))*i+frame_offset for i in range(len(det_scores))])
+
+    
+    #remove all no-detections from list
+    n0 = len(boxes)
+    boxes = [boxes[i] for i in range(n0) if scores[i][0] is not None]
+    landmarks = [landmarks[i] for i in range(n0) if scores[i][0] is not None]
+    frame_nums = [frame_nums[i] for i in range(n0) if scores[i][0] is not None]
+    fscores = [scores[i] for i in range(n0) if scores[i][0] is not None]
+
+    boxes = np.concatenate(boxes,axis=0).astype(np.int32)
+    boxes_wh = boxes[:,2:] - boxes[:,:2]
+    landmarks = np.concatenate(landmarks,axis=0).astype(np.int32)
+    landmarks = (landmarks.reshape((-1,10))).astype(np.int32)
+    scores = np.concatenate(fscores,axis=0)[:,np.newaxis]
+    frame_nums = np.concatenate(frame_nums, axis=0)[:,np.newaxis].astype(np.int32)
+    A = np.concatenate((frame_nums,boxes[:,:2],boxes_wh, scores, landmarks), axis = 1)
+    columns = ['frame_num'] + list('xywh') +['scores']
+    for i in range(5):
+        columns.append(f'lx{i}')
+        columns.append(f'ly{i}')
+    face_tbl = pd.DataFrame(A, columns=columns)
+    return face_tbl
+
+
+if __name__ == '__main__':
+    video_fname = '/Users/eranborenstein/data/debug2/VID-20231008-WA0033.mp4'
+    detect_in_batches(video_fname)
