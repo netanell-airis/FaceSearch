@@ -12,11 +12,12 @@ scripts = [os.path.join('scripts',x) for x in scripts]
 setup(
 	name='face_search',
 	version='1.0',
-	package_dir={"face_search": "src/face_search",
-              "FaceCoresetNet": "src/FaceCoresetNet",
-              "deep_sort": "src/deep_sort"},
-	packages=['face_search','FaceCoresetNet','deep_sort'],    
+    packages=find_packages(
+        where='src',
+        include=['pkg*'],  # alternatively: `exclude=['additional*']`
+    ),
+    package_dir={"": "src"},
     data_files=[('configs',['configs/video.mp4','configs/deep_sort.yaml']),
                 ('scripts',scripts)], 
-	include_package_data=True,
+	include_package_data=True,    
 )
