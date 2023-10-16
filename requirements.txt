@@ -12,3 +12,4 @@ plotly
 pytorch-lightning
 pandas
 opencv-python
+scipy
