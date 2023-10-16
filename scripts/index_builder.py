@@ -23,21 +23,23 @@ def build_index(args):
     pipeline_dirs = [os.path.splitext(x)[0]+'.pipeline' for x in video_files]
     pipeline_dirs = list(filter(lambda x:os.path.isdir(x), pipeline_dirs))
     corpus = SearchIndex.from_pipeline_outputs(pipeline_dirs,corpus_dir, 512)
+    build_template_db(args, corpus)
 
 
-def build_template_db(args):
+def build_template_db(args, corpus=None):
     """
     requires corpus_dir
     """
-    corpus_dir = args.corpus_directory
-
-    corpus = SearchIndex(512)
+    if corpus is None:
+        corpus_dir = args.output_directory
+        corpus = SearchIndex(512)
+        corpus.corpus_dir = corpus_dir 
     corpus.mode = 'a'
-    corpus.corpus_dir = corpus_dir 
+    
     with corpus as sig_tbl:
         E = sig_tbl['embeddings']
         sig_tbl['templates'].resize(E.shape)
-        face_tbl = corpus.face_dbl 
+        face_tbl = corpus.face_tbl 
         video_tbl = corpus.video_tbl 
         ftbl = face_tbl[face_tbl.face_id.isna() == False]
         ftbl = ftbl[ftbl.face_id >= 0]        
@@ -109,14 +111,16 @@ if __name__ == "__main__":
         help="The root directory to save the dataset")
     args = parser.parse_args()
 
-    args.input_directory = '/Users/eranborenstein/data/missing_faces.pipeline'
-    args.output_directory = '/Users/eranborenstein/data/missing_faces.dataset'
-    args.action = 'build_index'
+    if 'Users' in os.environ['HOME']:
+        args.input_directory = '/Users/eranborenstein/data/missing_faces.pipeline'
+        args.output_directory = '/Users/eranborenstein/data/missing_faces.dataset'
+        args.action = 'build_index'
 
 
     action_fn = {"create_virtual_video": create_virtual_video,
               "build_index": build_index, 
-              "update_index": update_index}
+              "update_index": update_index,
+              "build_templates": build_template_db}
     if args.action not in action_fn:
         logging.error(f'action={args.action} not implemented.')
         sys.exit(-1)
