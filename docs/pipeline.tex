@@ -1,0 +1,52 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{graphicx}
+
+\title{Face Pipeline}
+%\author{Your Name}
+%\date{\today}
+
+\begin{document}
+
+%\maketitle
+
+\section{Objects}
+\begin{itemize}
+    \item 
+ $V^{\upsilon} \in {R}^{N\times 3 \times H \times W}$
+    a 4d tensor representing {\it input video} with:
+    \begin{itemize}
+    \item 
+    ${\upsilon}$ - video unique id,
+    \item
+    $N$- number of frames,
+    \item
+    $3$ RGB channels
+    \item
+    $(H,W)$ for frame height and width.
+    \end{itemize}
+    
+    \item 
+$\mbox{F}^{\upsilon}$ a list of $M$ {\it face detections} $(fnum,x,y,w,h,s,F)$
+with a face detection tuple object representing:
+\begin{itemize}
+    \item $fnum$ the frame number, 
+    \item $(x,y,w,h)$ face roi,
+    \item $s$ -- detection score
+    \item $F \in {R}^{3\times h \times w}$ a cropped face tensor. 
+\end{itemize}
+
+\item $E^{\upsilon} \in {R}^{M\times d}$: a 2D array of $M$ {\it face embedding} vectors $e_j \in {R}^d$, $d=512$. 
+\item $L^{\upsilon} \in {Z}^{M}$ a vector of $M$ {\it face identification} labels $l_j$, assigning a face id to each detected face. 
+\item $T^{\upsilon} \in {R}^{K\times d}$ a 2D array of $K$ {\it face template} vectors $t_k \in {R}^d$, one for each face id. 
+\end{itemize}
+
+\section{Indexing Pipeline}
+\begin{enumerate}
+    \item $V^{\upsilon} \rightarrow F^{\upsilon}$ using a face detector.
+    \item $F^{\upsilon} \rightarrow E^{\upsilon}$, using face embedding. 
+    \item $E^{\upsilon} \times F^{\upsilon} \rightarrow L^{\upsilon}$, using clustering. 
+    \item $E^{\upsilon} \times L^{\upsilon} \rightarrow T^{\upsilon}$ Using template extraction process. 
+\end{enumerate}
+
+\end{document}
