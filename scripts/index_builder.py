@@ -72,24 +72,25 @@ def build_template_db(args, corpus=None):
 
 def create_virtual_video(args):
     video_dir = args.output_directory
+    logger_init(os.path.join(video_dir,'create_virtual_video.log'))
     frames = utils.get_files2process(args.input_directory,
                                      flt=lambda x:utils.is_img_fname(x))
     rname = re.compile(r'([A-Za-z0-9]+)_([A-Za-z0-9]+).')    
     frame_tbl = list()
     os.makedirs(video_dir, exist_ok=True)
-    for frame_num,img_dir in tqdm(enumerate(sorted(frames)),desc='virt-video'):
-        img = Image.open(img_dir)
-        person_id = os.path.splitext(os.path.split(img_dir)[-1])[0]
+    for frame_num,src_img_fname in tqdm(enumerate(sorted(frames)),desc='virt-video'):
+        img = Image.open(src_img_fname)
+        person_id = os.path.splitext(os.path.split(src_img_fname)[-1])[0]
         r0 = rname.findall(person_id)
         if r0 is None:
-            logging.warning(f'could not parse {img_dir}')
+            logging.warning(f'could not parse {src_img_fname}')
             continue
         first,last = r0[0]
         person_id = f'{first}.{last}'
         new_fname = os.path.join(video_dir,f'frame_{frame_num:04d}.png')
-
-        first, last, _ = new_fname.split('_')
-        frame_tbl.append((frame_num, img_dir,person_id))
+        logging.info(f'{person_id}:{src_img_fname}->{new_fname}')
+        # first, last, _ = new_fname.split('_')
+        frame_tbl.append((frame_num, src_img_fname,person_id))
         img = img.convert('RGB')
         img.save(new_fname)
     face_tbl = pd.DataFrame(frame_tbl, columns=['frame_num','fname','person_id'])

@@ -33,7 +33,11 @@ def logger_init(logger_fname=None, level = logging.INFO):
     file_handler = logging.FileHandler(logger_fname)
     file_handler.setLevel(level)
     file_handler.setFormatter(fformatter)
-    logger.addHandler(file_handler)
+    if len(logger.handlers)==1: 
+        logger.addHandler(file_handler)
+    else:
+        logger.handlers[1] = file_handler
+
 
 
 

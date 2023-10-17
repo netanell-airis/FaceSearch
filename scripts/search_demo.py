@@ -164,7 +164,7 @@ def search_missing_usig_embeddings(missing_db_root, index_root, K=10):
                 fid = int(g.iloc[0].face_id)
                 logging.info(f'face_id={fid},num_faces={m0},max={score:.3f}')
         cos_max_org = cos_max.copy()
-        for i in range(5):
+        for i in range(10):
             score = cos_max.max()
             # qi points to matching query
             qi, qj = np.where(cos_max==score)
@@ -268,7 +268,8 @@ if __name__ == '__main__':
     query_dataset = args.query_dataset 
     corpus_dataset = args.corpus_dataset
 
-    search_missing_usig_embeddings(query_dataset, corpus_dataset)
+    # search_missing_usig_embeddings(query_dataset, corpus_dataset)
+    search_missing(query_dataset, corpus_dataset)
 
     search_missing('')
     logger.info(f'command line={sys.argv}')

@@ -71,11 +71,13 @@
             "name": "missing",
             "type": "python",
             "request": "launch",
-            "program": "${file}",
+            "program": "${workspaceFolder}/scripts/search_demo.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--input_directory",
-                 "/Users/eranborenstein/data/missing_faces.pipeline",
+            "args": ["--corpus_dataset",
+                    "/Users/eranborenstein/data/debug2.dataset",
+                    "--query_dataset",
+                    "/Users/eranborenstein/data/missing_faces.dataset",
             ]
         },
         {
