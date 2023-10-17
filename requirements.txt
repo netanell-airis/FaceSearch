@@ -13,3 +13,4 @@ pytorch-lightning
 pandas
 opencv-python
 scipy
+mtcnn
