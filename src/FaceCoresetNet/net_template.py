@@ -429,7 +429,7 @@ class TemplateAggregateModel(nn.Module):
         actual_K = torch.min(torch.tensor([K, torch.tensor(number_features)]))
 
 
-        template_features = template_norms.unsqueeze(-1).repeat(1,1,template_features.shape[-1]) * template_features
+        #template_features = template_norms.unsqueeze(-1).repeat(1,1,template_features.shape[-1]) * template_features
         template_features.require_grad = True
         template_norms.require_grad = True
         core_template_orig = self.differential_farthest_point_sample(template_features, actual_K, template_norms)
@@ -457,8 +457,8 @@ class TemplateAggregateModel(nn.Module):
         # Template batch shape is [N, T, 512]
         aggregated_feature, FPS_sample = self.aggregate_fps_with_norm_priority(template_features, template_norms, only_FPS)
         norms = aggregated_feature.norm(dim=-1).unsqueeze(-1)
-        aggregated_feature_norm = aggregated_feature / norms
-        return aggregated_feature_norm, norms, FPS_sample
+        #aggregated_feature_norm = aggregated_feature / norms
+        return aggregated_feature, norms, FPS_sample
 
 
 ########################################################################################################################
