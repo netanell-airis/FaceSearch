@@ -20,6 +20,7 @@ def extract_faces_from_videos(video_files):
     for video_file in video_files:
         video_file = os.path.splitext(video_file)[0] + '.mp4'
         process_dir = get_video_process_dir(video_file)
+        logger_init(os.path.join(process_dir,'extract_faces_from_videos.log'))
         logging.info(f'working on {video_file}')
         face_tbl = detect_in_batches(video_file)
         io.save_table(process_dir, face_tbl,'faces')
@@ -32,6 +33,7 @@ def extract_frames(video_files):
     # Iterate over each video file
     for video_file in video_files:
         process_dir = get_video_process_dir(video_file)
+        logger_init(os.path.join(process_dir,'extract_frames.log'))
         logging.info(f'working on {video_file}')
 
 

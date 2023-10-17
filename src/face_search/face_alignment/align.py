@@ -1,7 +1,7 @@
 import sys
 import os
 
-from face_search.face_alignment import mtcnn
+#from face_search.face_alignment import mtcnn
 import argparse
 from PIL import Image
 from tqdm import tqdm

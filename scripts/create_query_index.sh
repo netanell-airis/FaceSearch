@@ -1,6 +1,6 @@
 #!/bin/bash
 #root_dir=${PWD}../configs/ 
-images_dir=${HOME}/data/missing_faces
+images_dir=${HOME}/data/missing_faces_0
 pipeline_dir=${images_dir}.pipeline 
 dataset_dir=${images_dir}.dataset 
 
