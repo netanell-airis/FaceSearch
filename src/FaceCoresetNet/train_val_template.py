@@ -103,46 +103,19 @@ class FaceCoresetNet(LightningModule):
         #self.gating = torch.nn.Linear(512, 512)
 
 
-    def forward(self, templates=None, labels=None, embeddings=None, norms=None, compute_feature=False, only_FPS=False):
-        #embeddings, norms = self.model(images)
-        #On inference mode we get the per template features as input:
-        # (N, template_size, 512)
-        #gil
+    def forward(self, templates=None, labels=None, embeddings=None, norms=None, compute_feature=False, only_FPS=False, mode='f_emb_to_t_emb'):
 
 
-        if self.training or compute_feature:
+        if mode == 'f_image_to_f_emb':
             embeddings, norms = self.template_model(templates)
             embeddings = embeddings.squeeze(0)
             norms = norms.squeeze(0)
             return embeddings, norms
-            # if compute_feature:
-            #     unnorm_embeddings = embeddings * norms
 
-        # unnorm_embeddings = embeddings * norms
-        # gating = self.gating(unnorm_embeddings).sigmoid()
-        # unnorm_embeddings = unnorm_embeddings * gating
-        # norms = unnorm_embeddings.norm(dim=-1).unsqueeze(-1)
-        # embeddings = unnorm_embeddings / norms
-        #norms = norms.squeeze(-1)
+        else: #f_emb_to_t_emb
+            aggregate_embeddings, aggregate_norms, _ = self.aggregate_model(embeddings, norms, only_FPS)
+            return  aggregate_embeddings,  aggregate_norms
 
-        aggregate_embeddings, aggregate_norms, FPS_sample = self.aggregate_model(embeddings, norms, only_FPS)
-        if compute_feature:
-            return aggregate_embeddings, aggregate_norms, unnorm_embeddings, FPS_sample
-
-
-        if not self.training:
-            # small_norms = aggregate_norms < 0
-            # aggregate_embeddings[small_norms.squeeze()] = torch.zeros_like(aggregate_embeddings[small_norms.squeeze()])
-            # aggregate_norms[small_norms.squeeze()] = 0
-            return aggregate_embeddings, aggregate_norms, FPS_sample
-
-        cos_thetas = self.head(aggregate_embeddings, aggregate_norms, labels)
-        if isinstance(cos_thetas, tuple):
-            cos_thetas, bad_grad = cos_thetas
-            labels[bad_grad.squeeze(-1)] = -100 # ignore_index
-
-        #return cos_thetas, norms, embeddings, labels
-        return cos_thetas, aggregate_norms, aggregate_embeddings, labels
 
 
     def training_step(self, batch, batch_idx):

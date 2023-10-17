@@ -455,7 +455,6 @@ class TemplateAggregateModel(nn.Module):
 
     def forward(self, template_features, template_norms, only_FPS=False):
         # Template batch shape is [N, T, 512]
-        template_norms = torch.squeeze(template_norms, dim=-1)
         aggregated_feature, FPS_sample = self.aggregate_fps_with_norm_priority(template_features, template_norms, only_FPS)
         norms = aggregated_feature.norm(dim=-1).unsqueeze(-1)
         aggregated_feature_norm = aggregated_feature / norms
