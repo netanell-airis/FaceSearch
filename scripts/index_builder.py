@@ -53,16 +53,13 @@ def build_template_db(args, corpus=None):
             norms = vg.enorm.values 
             E_vid = E_vid * norms[:,np.newaxis]
             fid = vg.face_id.values
-            T = utils.get_gallery_templates(fid, E_vid)
-            tid2fid = np.arange(int(fid.max()+1))
-            tn = np.linalg.norm(T,axis=1)
-            tid2fid = tid2fid[tn >0]
-            T = T[tn > 0]
+            T, tid2fid = utils.get_gallery_templates(fid, E_vid)
+            tid2fid = np.array(tid2fid)[:,np.newaxis]
             i1 = i0 + T.shape[0]
             sig_tbl['templates'][i0:i1] = T
             enorm = np.linalg.norm(T, axis=1)
             i0 = i1
-            et = np.concatenate((enorm[:,np.newaxis], tid2fid[:,np.newaxis]),axis=1)
+            et = np.concatenate((enorm[:,np.newaxis], tid2fid),axis=1)
             ttbl = pd.DataFrame(et, columns=['enorm','tid2fid'])
             ttbl['video_id'] = vix
             t_tbl_lst.append(ttbl)

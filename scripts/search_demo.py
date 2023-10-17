@@ -118,18 +118,16 @@ def search_missing(missing_db_root, index_root, K=10):
             video_id = int(video_id)
             video_fname = corpus.video_tbl.loc[video_id].video_fname    
             t = corpus.face_tbl[(corpus.face_tbl.video_id==video_id) & (corpus.face_tbl.face_id == face_id)]
-            for ix, r in t.iterrows():
-                frame_num = int(r.frame_num)
-                fname = f'faceid_{face_id:04d}_{frame_num:04d}.png'
-                fname = os.path.join(video_fname, fname)
-                file_name_list.append(fname)
-                name = match_query.person_id #.tolist()[0]
-                logging.info(f'missing {name}')
-                logging.info(f'{fname}')
-                logging.info(f'cosine_sim={score}')
+            frame_nums = t.frame_num.tolist()
+            fnames = [f'faceid_{face_id:04d}_{frame_num:04d}.png' for frame_num in frame_nums]
+            fnames = [os.path.join(video_fname,x) for x in fnames]
+            name = match_query.person_id.tolist()[0] 
+            res_name = f'{name}.{score}.txt'
+            with open(os.path.join(video_fname,res_name), 'w') as f:
+                f.writelines('\n'.join(fnames))
+            logging.info(f'matching {name} to {face_id}={score:4f}')
+            logging.info(f'cosine_sim={score}')
         
-        with open('/tmp/files.txt','w') as fh:
-            fh.writelines('\n'.join(file_name_list))
     return cos_max_org, cos_amax
 
 def search_missing_usig_embeddings(missing_db_root, index_root, K=10):
