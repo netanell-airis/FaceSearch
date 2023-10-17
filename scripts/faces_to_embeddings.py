@@ -69,6 +69,8 @@ def faces2embeddings_gil(video_files):
             aligned_face.save(out_fname)
             det_list.append(aligned_face is not None)
             bgr_tensor_input = to_input(aligned_face)
+            if bgr_tensor_input.shape[1]> 3:
+                dbg = 1
             aligned_faces_db.append(bgr_tensor_input)
 
         i0 = 0
@@ -91,6 +93,7 @@ def faces2embeddings_gil(video_files):
         db['enorm'] = enorm
         db.to_csv(os.path.join(process_dir, 'faces.csv'))
         fname = os.path.join(process_dir, 'embeddings.pth')
+        logging.info(f'saving {e.shape[0]}x{e.shape[1]} embeddings into {fname}')
         torch.save(e, fname)
         t1 = time.time()
         logging.info(f'finished detecting {len(db)} faces in {t1 - t0}secs')

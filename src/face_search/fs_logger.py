@@ -2,6 +2,7 @@ import logging
 import datetime
 import sys
 import os
+
 def logger_init(logger_fname=None, level = logging.INFO):
     if logger_fname is None:
         logger_root = os.path.curdir 

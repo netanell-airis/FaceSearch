@@ -6,16 +6,18 @@ from deepface import DeepFace
 from tqdm import tqdm 
 
 def get_gallery_templates(face_ids, embeddings ):
+    face_ids = np.uint32(face_ids)
     embedding_dim = embeddings.shape[1]
     if len(face_ids) == 0:
         return np.zeros((1,embedding_dim))
-    num_ids = max(face_ids)+1
+    num_ids = int(max(face_ids))+1
     n = embeddings.shape[0]
     data = np.ones(len(face_ids))
     row = np.arange(n)
-    col = face_ids
+    col = face_ids.astype(row.dtype)
     W = sp.csr_matrix((data, (row, col)), (n,num_ids),dtype = np.float32)
     Z = W.sum(axis=0)
+    Z[Z==0] = 1.0
     T = W.transpose() @ embeddings
     T = T / Z.transpose()
     return T
@@ -63,6 +65,15 @@ def extract_signatures(fnames, detector_backend = 'retinaface',target_size=(112,
         signatures.append(sig[0])
     return signatures
 
+
+def get_video_files(args):
+    if os.path.splitext(args.input_directory)[-1] == '.pipeline':
+        video_files = [args.input_directory]
+    else:
+        video_files = get_files2process(args.input_directory, flt=lambda x:is_video(x))
+    return video_files
+
+
 def is_video(fname):
     return os.path.splitext(fname)[-1].lower() == '.mp4'
 
@@ -78,6 +89,10 @@ def is_video_face_roi(fname):
     frame_num = g.groups()[0] if g else None
     return frame_num
     
+def is_img_fname(fname):
+    ext = os.path.splitext(fname)[-1]
+    ext = ext.lower()
+    return ext in ['.jpeg','.jpg','.png','tif']
 
 
 

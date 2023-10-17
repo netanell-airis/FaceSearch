@@ -3,7 +3,42 @@
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
-    "configurations": [
+    "configurations": [        
+        {
+            "name": "frames_to_faces",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/frames_to_faces.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--input_directory",
+                 "${userHome}/data/missing_faces.pipeline",
+                 "--mp4",
+            ]
+        },
+        {
+            "name": "faces_to_embeddings",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/faces_to_embeddings.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--input_directory",
+                 "${userHome}/data/debug/20231007_072338_hamza20300_159830.pipeline",
+            ]
+        },
+        {
+            "name": "face_to_faceid",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/face_to_faceid.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--input_directory",
+                 "${userHome}/data/missing_faces.pipeline",
+            ]
+        },
+
         {
             "name": "search",
             "type": "python",
@@ -17,16 +52,44 @@
             ]
         },
         {
-            "name": "build_index.py",
+            "name": "process",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/scripts/build_index.py",
+            "program": "${workspaceFolder}/scripts/index_builder.py",            
+            // "program": "${file}", 
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--input_path",
-                 "/Users/eranborenstein/pc/airis/DeepSORT_Face/",
-                "--save_path","/tmp/faces",
-                "--scale","4"
+            "args": ["--input_directory",
+                 "/Users/eranborenstein/pc/FaceSearch/configs",
+                 "--corpus_directory",
+                 "/Users/eranborenstein/data/corpus.dataset",
+                 "--images_root",
+                 "/Users/eranborenstein/data/missing_faces",
+            ]
+        },
+        {
+            "name": "missing",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--input_directory",
+                 "/Users/eranborenstein/data/missing_faces.pipeline",
+            ]
+        },
+        {
+            "name": "index_builder.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/index_builder.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--action","create_virtual_video",
+                    "--input_directory",
+                    "/Users/eranborenstein/data/missing_faces",
+                    "--output_directory",
+                    "/Users/eranborenstein/data/missing_faces.pipeline",
             ]
         },
         {

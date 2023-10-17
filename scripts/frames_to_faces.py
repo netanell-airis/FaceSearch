@@ -4,7 +4,6 @@ import time
 import re
 import pandas as pd
 import PIL.Image
-from mtcnn import MTCNN
 import cv2
 import argparse
 from face_search.fs_logger import logger_init
@@ -14,21 +13,24 @@ from face_search import io
 import torch
 
 
-# import os
-# import logging
-# import time
-# import re
-# import pandas as pd
-# import PIL.Image
-# from mtcnn import MTCNN
-# import cv2
-# import argparse
-# from face_search.fs_logger import logger_init
-# from face_search.utils import is_video_frame, get_video_process_dir
-# from face_search.utils import is_video, get_files2process
-# import torch
+from face_search.face_detector import detect_in_batches
+from face_search import io
 
-def detect_faces_gil(video_files):
+def extract_faces_from_videos(video_files):
+    for video_file in video_files:
+        video_file = os.path.splitext(video_file)[0] + '.mp4'
+        process_dir = get_video_process_dir(video_file)
+        logging.info(f'working on {video_file}')
+        face_tbl = detect_in_batches(video_file)
+        io.save_table(process_dir, face_tbl,'faces')
+
+
+
+
+
+def detect_faces_from_frames(video_files):
+    from mtcnn import MTCNN
+
     # Initialize the MTCNN detector
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     detector = MTCNN(steps_threshold=[0.6,0.7,0.9])
@@ -77,8 +79,13 @@ def detect_faces_gil(video_files):
                 face_list.append((frame_num, i, confidence, x, y, width, height, landmarks))
         
         db = pd.DataFrame(face_list, columns = ['frame_num','idx','confidence', 'x','y','w','h','landmarks'])
-        db.to_csv(os.path.join(process_dir,'faces.csv'))
+        frame_tbl = io.load_table(process_dir, 'frames')
+        if (frame_tbl is not None) and 'person_id' in frame_tbl:
+            logging.info('adding person_id info')
+            db = db.merge(frame_tbl, on='frame_num', how='left')
+
         logging.info(f'finished detecting {len(db)} faces for video')
+        io.save_table(process_dir, db, 'faces')
 
 
 
@@ -136,6 +143,7 @@ if __name__ == "__main__":
     logger_init()
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_directory', help="The root directory containing video frames")
+    parser.add_argument('--mp4', action='store_true', help="The root directory containing video frames")
     args = parser.parse_args()
 
     from face_search import utils
@@ -143,7 +151,11 @@ if __name__ == "__main__":
 
     logging.info(f'detecting faces in {len(video_files)} videos')
     t0 = time.time()
-    detect_faces_gil(video_files)
+    if args.mp4:
+        extract_faces_from_videos(video_files)
+    else:
+        detect_faces_from_frames(video_files)
+
     t1 = time.time()
     logging.info(f'process took {t1-t0}secs')
 

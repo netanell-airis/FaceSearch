@@ -1,5 +1,6 @@
-from deepface import DeepFace
-from deepface.commons import functions, distance as dst
+import os
+# from deepface import DeepFace
+# from deepface.commons import functions, distance as dst
 import numpy as np
 import pandas as pd
 from face_search.utils import get_gallery_templates
@@ -247,3 +248,122 @@ class FaceDetector:
             # corners = cv2.goodFeaturesToTrack(face_gray, 10,0.01,5)
             frame_results.append(res_dict)
         return frame_results, faces
+
+
+def process_bbox_detections(batch_frames, batch_frame_nums, batch_boxes,process_dir):
+    for ix, img in enumerate(batch_frames):
+        frame_num = batch_frame_nums[ix]
+        for bid, box in enumerate(batch_boxes[ix]):
+            # Crop the face from the original image
+            x0,y0,x1,y1 = box.astype(np.int32)
+            face_img = img.crop((x0,y0,x1,y1))                    
+            output_filename = os.path.join(process_dir, f'face_{frame_num:05d}_{bid:04d}.png')
+            face_img.save(output_filename, 'PNG')
+def filter_list(src, det):
+    dst = [src[k] for k in range(len(src)) if det[k]]
+    return dst 
+
+def detect_in_batches(video_fname):
+    from facenet_pytorch import MTCNN
+    import cv2
+    from PIL import Image
+    import numpy as np
+    from matplotlib import pyplot as plt
+    from tqdm import tqdm
+    import torch 
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    process_dir = os.path.splitext(video_fname)[0] + '.pipeline'
+
+    # v_cap = cv2.VideoCapture('20231007_072338_hamza20300_159830.mp4')
+    v_cap = cv2.VideoCapture(video_fname)
+    v_len = int(v_cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    mtcnn = MTCNN(margin=20, keep_all=True, post_process=False, device=device)
+
+    # Loop through video
+    batch_size = 4
+    batch_frames = []
+    boxes = []
+    landmarks = []
+    frame_nums = []
+    scores = []
+    ix_list = []
+    batch_frame_nums = []
+    frame_offset = 0
+    
+    for frame_num in tqdm(range(v_len)):
+        # Load frame
+        success, frame = v_cap.read()
+        if not success:
+            continue
+
+        # Add to batch
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        batch_frames.append(Image.fromarray(frame))        
+        batch_frame_nums.append(frame_num)
+
+        # When batch is full, detect faces and reset batch list
+        if len(batch_frames) == batch_size:
+            batch_boxes, det_scores, batch_landmarks = mtcnn.detect(batch_frames, landmarks=True)
+            det = list(map(lambda x:x is not None, batch_boxes))
+            batch_frames = filter_list(batch_frames,det)
+            batch_boxes = filter_list(batch_boxes, det)
+            det_scores = filter_list(det_scores, det)
+            batch_landmarks = filter_list(batch_landmarks, det)
+            batch_frame_nums = filter_list(batch_frame_nums,det)
+            boxes.extend(batch_boxes)
+            landmarks.extend(batch_landmarks)
+            scores.extend(det_scores)
+            frame_nums.extend([np.ones(len(det_scores[i]))*batch_frame_nums[i] for i in range(len(det_scores))])
+            ix_list.extend([np.arange(len(det_scores[i])) for i in range(len(det_scores))])
+            process_bbox_detections(batch_frames, batch_frame_nums,
+                                    batch_boxes, process_dir)
+            
+            batch_frames = list()
+            batch_frame_nums = list()
+
+    if len(batch_frames):
+        batch_boxes, det_scores, batch_landmarks = mtcnn.detect(batch_frames, landmarks=True)
+        det = list(map(lambda x:x is not None, batch_boxes))
+        batch_frames = filter_list(batch_frames,det)
+
+        batch_boxes = filter_list(batch_boxes, det)
+        det_scores = filter_list(det_scores, det)
+        batch_landmarks = filter_list(batch_landmarks, det)
+        batch_frame_nums = filter_list(batch_frame_nums,det)
+        boxes.extend(batch_boxes)
+        landmarks.extend(batch_landmarks)
+        scores.extend(det_scores)        
+        frame_nums.extend([np.ones(len(det_scores[i]))*i+frame_offset for i in range(len(det_scores))])
+        ix_list.extend([np.arange(len(det_scores[i])) for i in range(len(det_scores))])
+        process_bbox_detections(batch_frames, batch_frame_nums,
+                                batch_boxes, process_dir)
+
+    
+    #remove all no-detections from list
+    n0 = len(boxes)
+    boxes = [boxes[i] for i in range(n0) if scores[i][0] is not None]
+    landmarks = [landmarks[i] for i in range(n0) if scores[i][0] is not None]
+    frame_nums = [frame_nums[i] for i in range(n0) if scores[i][0] is not None]
+    ix_list = [ix_list[i] for i in range(n0) if scores[i][0] is not None]
+    fscores = [scores[i] for i in range(n0) if scores[i][0] is not None]
+    
+
+    boxes = np.concatenate(boxes,axis=0).astype(np.int32)
+    boxes_wh = boxes[:,2:] - boxes[:,:2]
+    landmarks = np.concatenate(landmarks,axis=0).astype(np.int32)
+    landmarks = (landmarks.reshape((-1,10))).astype(np.int32)
+    scores = np.concatenate(fscores,axis=0)[:,np.newaxis]
+    idx = np.concatenate(ix_list, axis=0)[:,np.newaxis]
+    frame_nums = np.concatenate(frame_nums, axis=0)[:,np.newaxis].astype(np.int32)
+    A = np.concatenate((frame_nums,idx, scores, boxes[:,:2],boxes_wh), axis = 1)
+    columns = ['frame_num','idx', 'confidence'] + list('xywh') 
+    face_tbl = pd.DataFrame(A, columns=columns)
+    landmarks_tbl = pd.DataFrame(pd.Series(landmarks.tolist()),columns=['landmarks'])
+    face_tbl = pd.concat((face_tbl,landmarks_tbl),axis=1)
+    return face_tbl
+
+
+if __name__ == '__main__':
+    video_fname = '/Users/eranborenstein/data/debug2/VID-20231008-WA0033.mp4'
+    detect_in_batches(video_fname)

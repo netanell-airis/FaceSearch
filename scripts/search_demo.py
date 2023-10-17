@@ -139,10 +139,10 @@ def search_missing_usig_embeddings(missing_db_root, index_root, K=10):
     query.corpus_dir = missing_db_root 
 
     with corpus as sig_tbl:
-        enorm = corpus.t_tbl.enorm.values
+        enorm = corpus.face_tbl.enorm.values
         ns = enorm.size 
-        sigs = sig_tbl['templates'][:ns]
-        nsigs = sigs / enorm[:,np.newaxis]        
+        nsigs = sig_tbl['embeddings'][:ns]
+        # nsigs = sigs / enorm[:,np.newaxis]        
         file_name_list = list()
         with query as qtbl:
             n0 = len(query.face_tbl)
@@ -172,21 +172,25 @@ def search_missing_usig_embeddings(missing_db_root, index_root, K=10):
             match_query = query.face_tbl.loc[qi]
             # ti is pointing to matching template ()
             ti = cos_amax[qi,qj]
-            video_id, face_id = corpus.t_tbl.loc[ti,['video_id','tid2fid']].values.tolist()[0]
-            face_id = int(face_id)
-            video_id = int(video_id)
-            video_fname = corpus.video_tbl.loc[video_id].video_fname    
-            t = corpus.face_tbl[(corpus.face_tbl.video_id==video_id) & (corpus.face_tbl.face_id == face_id)]
+            video_id, face_id, frame_num, idx = (corpus.face_tbl.loc[ti,['video_id','face_id','frame_num','idx']].values).astype(np.int32).tolist()[0]
+            video_fname = corpus.video_tbl.loc[video_id].video_fname
+            tvid = corpus.face_tbl[corpus.face_tbl.video_id==video_id]
+            if face_id >=0:
+                t = tvid[tvid.face_id == face_id]
+            else:
+                t = tvid[(tvid.frame_num == frame_num) &(tvid.idx == idx)]
             for ix, r in t.iterrows():
                 frame_num = int(r.frame_num)
-                fname = f'faceid_{face_id:04d}_{frame_num:04d}.png'
+                idx = int(r.idx)
+                fname = f'face_{frame_num:05d}_{idx:04d}.png'
                 fname = os.path.join(video_fname, fname)
                 file_name_list.append(fname)
-                name = match_query.name #.tolist()[0]
+                name = match_query.person_id #.tolist()[0]
                 logging.info(f'missing {name}')
                 logging.info(f'{fname}')
                 logging.info(f'cosine_sim={score}')
-                break
+                if face_id < 0:
+                    break
         with open('/tmp/files.txt','w') as fh:
             fh.writelines('\n'.join(file_name_list))
     return cos_max_org, cos_amax
@@ -252,8 +256,8 @@ def display_results():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # input and output
-    parser.add_argument('--db_root', type=str, default='video.mp4', help='root of index')  
-    parser.add_argument('--query', type=str, default='output/', help='query') 
+    parser.add_argument('--corpus_dataset', type=str, default='video.mp4', help='root of index')  
+    parser.add_argument('--query_dataset', type=str, default='output/', help='query') 
     args = parser.parse_args()
     #display_results()    
     logger_init()
@@ -261,9 +265,10 @@ if __name__ == '__main__':
     logger = logging.getLogger()
 
     root = os.environ['HOME']
-    corpus_dir = '/Users/eranborenstein/data/Videos_Batch_3.dataset'
-    query_dir = '/Users/eranborenstein/data/missing_faces.dataset'
-    search_missing(query_dir, corpus_dir)
+    query_dataset = args.query_dataset 
+    corpus_dataset = args.corpus_dataset
+
+    search_missing_usig_embeddings(query_dataset, corpus_dataset)
 
     search_missing('')
     logger.info(f'command line={sys.argv}')
