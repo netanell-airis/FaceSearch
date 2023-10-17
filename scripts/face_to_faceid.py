@@ -20,6 +20,8 @@ from face_search import io
 #from facenet_pytorch import MTCNN
 
 import sys
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 currentUrl = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(currentUrl, 'yolov5')))
