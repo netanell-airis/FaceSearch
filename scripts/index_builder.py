@@ -92,7 +92,7 @@ def create_virtual_video(args):
         frame_tbl.append((frame_num, img_dir,person_id))
         img = img.convert('RGB')
         img.save(new_fname)
-    face_tbl = pd.DataFrame(frame_tbl, columns=['frame_num','fname','peron_id'])
+    face_tbl = pd.DataFrame(frame_tbl, columns=['frame_num','fname','person_id'])
     io.save_table(video_dir,face_tbl, 'frames')
     logging.info(f'saved {len(face_tbl)} faces into {video_dir}')
 
