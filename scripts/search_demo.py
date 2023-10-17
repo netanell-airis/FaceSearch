@@ -123,11 +123,11 @@ def search_missing(missing_db_root, index_root, K=10):
                 fname = f'faceid_{face_id:04d}_{frame_num:04d}.png'
                 fname = os.path.join(video_fname, fname)
                 file_name_list.append(fname)
-                name = match_query.name #.tolist()[0]
+                name = match_query.person_id #.tolist()[0]
                 logging.info(f'missing {name}')
                 logging.info(f'{fname}')
                 logging.info(f'cosine_sim={score}')
-                break
+        
         with open('/tmp/files.txt','w') as fh:
             fh.writelines('\n'.join(file_name_list))
     return cos_max_org, cos_amax

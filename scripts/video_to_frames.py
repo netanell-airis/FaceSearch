@@ -33,6 +33,7 @@ def extract_frames(video_files):
     # Iterate over each video file
     for video_file in video_files:
         process_dir = get_video_process_dir(video_file)
+        logger_init(os.path.join(process_dir,'extract_frames.log'))
         logging.info(f'working on {video_file}')
 
 

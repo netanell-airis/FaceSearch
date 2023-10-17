@@ -19,6 +19,7 @@ def build_index(args):
     """
     video_files = utils.get_video_files(args)
     corpus_dir = args.output_directory
+    logger_init(os.path.join(corpus_dir,'build_index.log'))
     logging.info(f'building a corpus from {len(video_files)}')
     logging.info(f'saving the dataset in {corpus_dir}')
     pipeline_dirs = [os.path.splitext(x)[0]+'.pipeline' for x in video_files]
@@ -88,7 +89,7 @@ def create_virtual_video(args):
         first,last = r0[0]
         person_id = f'{first}.{last}'
         new_fname = os.path.join(video_dir,f'frame_{frame_num:04d}.png')
-        logging.info(f'{person_id}:{src_img_fname}->{new_fname}')
+        logging.info(f'person_id:{person_id}:{src_img_fname}->{new_fname}')
         # first, last, _ = new_fname.split('_')
         frame_tbl.append((frame_num, src_img_fname,person_id))
         img = img.convert('RGB')
