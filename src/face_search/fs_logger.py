@@ -6,8 +6,7 @@ import os
 def logger_init(logger_fname=None, level = logging.INFO):
     if logger_fname is None:
         logger_root = os.path.curdir 
-        logger_root = os.path.join(logger_root, 'runs')
-        os.makedirs(logger_root,exist_ok=True)
+        logger_root = os.path.join(logger_root, 'runs')        
         now = datetime.datetime.now()
         method = list(filter(lambda x:".py" in x, sys.argv))
         if len(method):
@@ -17,6 +16,8 @@ def logger_init(logger_fname=None, level = logging.INFO):
         filename = f'{now:%Y%m%d.%H%M%S}.{method}.log'
         logger_fname = os.path.join(logger_root, filename)
 
+    logger_root = os.path.split(logger_fname)[0]
+    os.makedirs(logger_root, exist_ok=True)
     logger = logging.getLogger()
     # get the root logger
     stdformattter = logging.Formatter('%(asctime)s %(levelname)s %(filename)s %(message)s', datefmt='%m-%d %H:%M:%S')
