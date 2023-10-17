@@ -45,6 +45,7 @@ def faces2embeddings_gil(video_files):
     for video_file in video_files:
         t0 = time.time()
         process_dir = get_video_process_dir(video_file)
+        logger_init(os.path.join(process_dir,'faces_to_embeddings_gil.log'))
         db = pd.read_csv(os.path.join(process_dir, 'faces.csv',))
 
         face_list = db[['frame_num', 'idx', 'landmarks']].values.tolist()

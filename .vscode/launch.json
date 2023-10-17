@@ -12,8 +12,8 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["--input_directory",
-                 "${userHome}/data/missing_faces.pipeline",
-                 "--mp4",
+                 "${userHome}/data/missing_faces_0.pipeline",
+                 //"--mp4",
             ]
         },
         {
@@ -35,7 +35,7 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["--input_directory",
-                 "${userHome}/data/missing_faces.pipeline",
+                 "${userHome}/data/debug_0",
             ]
         },
 
@@ -75,9 +75,9 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["--corpus_dataset",
-                    "/Users/eranborenstein/data/debug2.dataset",
+                    "/Users/eranborenstein/data/debug_0.dataset",
                     "--query_dataset",
-                    "/Users/eranborenstein/data/missing_faces.dataset",
+                    "/Users/eranborenstein/data/missing_faces_0.dataset",
             ]
         },
         {
