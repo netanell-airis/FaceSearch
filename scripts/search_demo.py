@@ -1,21 +1,14 @@
 import argparse
-import datetime
-
+import logging
 import os
 import sys
 from PIL import Image
-import cv2 
 import numpy as np
-import torch 
 import pandas as pd
-from tqdm import tqdm 
 import torch 
-from face_search.utils import get_gallery_templates
 from face_search.search_index import SearchIndex
-from face_search.utils import copy_partial_dict
 from face_search.utils import extract_signatures, get_files2process
 from face_search.viz import render_query_res, serve_app
-import logging
 from face_search.fs_logger import logger_init
 
 
@@ -72,7 +65,6 @@ def extract_query_sig(args):
     ix = ix[:10]
     db0 = db[ix]
     
-
 def search_missing(missing_db_root, index_root, K=10):
     corpus = SearchIndex(512)
     corpus.corpus_dir = index_root 
@@ -84,7 +76,6 @@ def search_missing(missing_db_root, index_root, K=10):
         ns = enorm.size 
         tmplts = sig_tbl['templates'][:ns]
         ntmplts = tmplts / enorm[:,np.newaxis]        
-        file_name_list = list()
         with query as qtbl:
             n0 = len(query.t_tbl)
             qnorm = query.t_tbl.enorm.values
@@ -95,7 +86,6 @@ def search_missing(missing_db_root, index_root, K=10):
             cos_sim = qntmplts @ ntmplts.transpose()
             cos_amax = np.argmax(cos_sim, axis=1)
             cos_max = cos_sim[np.arange(cos_sim.shape[0]),cos_amax]
-        cos_max_org = cos_max.copy()
         qidx = np.argsort(-cos_max)
         for i in range(5):
             qi = qidx[i]
@@ -187,8 +177,6 @@ def search_missing_usig_embeddings(missing_db_root, index_root, K=10):
             fh.writelines('\n'.join(file_name_list))
     return cos_max_org, cos_amax
 
-
-
 def debug_sigs(args):
     from deepface import DeepFace
     from deepface.DeepFace import functions
@@ -214,16 +202,6 @@ def debug_sigs(args):
     sig = extract_signatures(fnames,detector_backend='retinaface')
     query = [np.array(x['embedding'])[np.newaxis,:] for x in sig]
     query = np.concatenate(query, axis=0)
-    
-
-
-
-
-
-
-    
-def img_filter(x):
-    return os.path.splitext(x)[-1].lower() in ['.jpeg','jpg','png']
 
 def display_results():
     if 0:
@@ -245,8 +223,6 @@ def display_results():
     layout = render_query_res(top_k_queries[:10])
     serve_app(layout)
 
-
-
 def dump_html(results):
     headings = ['My Html']
 
@@ -266,9 +242,6 @@ def dump_html(results):
                     line('td', str(x))
         
     return doc
-
-
-
 
 def plot_one_result(res):
     import matplotlib.pyplot as plt
@@ -310,14 +283,10 @@ def generate_image_tag(image_data):
     Returns:
     An HTML image tag.
     """
-
+    import base64
     encoded_image = base64.b64encode(image_data).decode('utf-8')
     image_tag = f'<img src="data:image/png;base64,{encoded_image}"/>'
     return image_tag
-
-
-
-
 
 def create_html_table_with_images(results, res_dir):
     for i,res in enumerate(results):
@@ -381,43 +350,16 @@ if __name__ == '__main__':
     query_dataset = args.query_dataset 
     corpus_dataset = args.corpus_dataset
 
+    res_fname = os.path.split(query_dataset)
+
     # search_missing_usig_embeddings(query_dataset, corpus_dataset)
-    search_results = search_missing(query_dataset, corpus_dataset)
-    torch.save(search_results, '/tmp/search_results.pth')
-    search_results = torch.load('/tmp/search_results.pth')
+    if 1:
+        search_results = search_missing(query_dataset, corpus_dataset)
+        torch.save(search_results, '/tmp/search_results.pth')
+    from face_search import viz 
+    # search_results = torch.load('/tmp/search_results.pth')
+    layout = viz.render_query_res(search_results)
+    viz.serve_app(layout)
+
     # create_html_table_with_images(search_results, '/tmp/')
     sys.exit()
-
-    logger.info(f'command line={sys.argv}')
-    logging.info('hello')
-    index_files = get_files2process(args.db_root, flt=filter_index_files) #[:4]
-    query_images = get_files2process(args.query, flt=img_filter)
-    logger.info(f'working on {len(index_files)} index files and {len(query_images)} queries')
-    logger.info(f'index_files={index_files}')
-    logger.info(f'query_images={query_images}')
-    logger.info("Generating index")
-    corpus_fname = f'/tmp/search_corpus.{len(index_files)}.pth'
-    if os.path.isfile(corpus_fname):
-        corpus = torch.load(corpus_fname)
-    else:
-        corpus = SearchIndex.from_index_files(index_files)
-        #torch.save(corpus, corpus_fname)
-    num_faces = len(corpus.db)
-    num_queries = len(query_images)
-    logger.info(f'looking for {num_queries} people in {num_faces} embeddings')
-    all_queries = list()
-    for ix,query_fname in tqdm(enumerate(query_images), desc='extract-sig'):
-        try:
-            cimg = Image.open(query_fname)
-        except:
-            continue
-        logger.info(f'working on image {query_fname}, size={cimg.size}')
-        query_res = corpus.search_by_query_images([query_fname])
-        torch.save(query_res,f'/tmp/query_{ix:03d}_results.pth')
-        all_queries += query_res
-        if ix % 5 == 0:
-            torch.save(all_queries,f'/tmp/all_queries.pth')
-
-
-    # layout = render_query_res(query_res)
-    # serve_app(layout)

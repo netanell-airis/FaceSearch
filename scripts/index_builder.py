@@ -42,7 +42,7 @@ def load_embedding_model():
     hparams = dotdict(vars(args))
     model = FaceCoresetNet(**hparams)
     #checkpoint = torch.load(path_to_facecoresetnet_checkpoint, map_location=torch.device(device))
-    checkpoint = torch.load(path_to_facecoresetnet_checkpoint)
+    checkpoint = torch.load(path_to_facecoresetnet_checkpoint, map_location=torch.device(device))
     model.load_state_dict(checkpoint['state_dict'])
     #model.aggregate_model.gamma = torch.nn.Parameter(torch.tensor(0.0))
     model.eval()
@@ -51,11 +51,12 @@ def load_embedding_model():
     return model
 
 
-def build_template_db(args, corpus=None, aggregation_mode='FaceCoresetNet'):
+def build_template_db(args, corpus=None):
     """
     requires corpus_dir
     """
-    if aggregation_mode == 'FaceCoresetNet':
+
+    if args.aggregation == 'FaceCoresetNet':
         model = load_embedding_model()
     else:
         model = None

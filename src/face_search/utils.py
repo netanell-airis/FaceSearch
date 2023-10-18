@@ -110,6 +110,10 @@ def is_video_face_roi(fname):
     frame_num = g.groups()[0] if g else None
     return frame_num
     
+
+def img_filter(x):
+    return os.path.splitext(x)[-1].lower() in ['.jpeg','jpg','png']
+
 def is_img_fname(fname):
     ext = os.path.splitext(fname)[-1]
     ext = ext.lower()
