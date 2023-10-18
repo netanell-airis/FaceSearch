@@ -78,7 +78,7 @@ def search_missing(missing_db_root, index_root, K=10):
     corpus.corpus_dir = index_root 
     query = SearchIndex(512)
     query.corpus_dir = missing_db_root 
-
+    search_results = list()
     with corpus as sig_tbl:
         enorm = corpus.t_tbl.enorm.values
         ns = enorm.size 
@@ -122,13 +122,17 @@ def search_missing(missing_db_root, index_root, K=10):
             fnames = [f'faceid_{face_id:04d}_{frame_num:04d}.png' for frame_num in frame_nums]
             fnames = [os.path.join(video_fname,x) for x in fnames]
             name = match_query.person_id.tolist()[0] 
-            res_name = f'{name}.{score}.txt'
-            with open(os.path.join(video_fname,res_name), 'w') as f:
-                f.writelines('\n'.join(fnames))
+            res = dict()
+            res['score'] = score 
+            res['match_corpus'] = t 
+            res['match_query'] = match_query 
+            res['video'] = video_fname 
+            search_results.append(res)
             logging.info(f'matching {name} to {face_id}={score:4f}')
             logging.info(f'cosine_sim={score}')
         
-    return cos_max_org, cos_amax
+    # return cos_max_org, cos_amax, search_results
+    return search_results 
 
 def search_missing_usig_embeddings(missing_db_root, index_root, K=10):
     corpus = SearchIndex(512)
@@ -251,6 +255,127 @@ def display_results():
     layout = render_query_res(top_k_queries[:10])
     serve_app(layout)
 
+
+
+def dump_html(results):
+    headings = ['My Html']
+
+    from yattag import Doc 
+    doc, tag, text, line = Doc().ttl()
+    with tag('table'):
+        with tag('tr'):
+            for x in headings:
+                line('th', str(x))
+        for res in results:
+            q = res['match_query']
+            v = res['match_corpus']        
+            qimg = Image.open(q.iloc[0].fname)
+
+            with tag('tr'):
+                for x in row['match_corpus'].frame_num.tolist():
+                    line('td', str(x))
+        
+    return doc
+
+
+
+
+def plot_one_result(res):
+    import matplotlib.pyplot as plt
+    import matplotlib
+    import numpy as np
+    matplotlib.rcParams['font.size'] = 18
+
+    q = res['match_query']
+    v = res['match_corpus']        
+    qimg = Image.open(q.iloc[0].fname)
+    face_id = int(v.face_id.tolist()[0])
+    frame_nums = [int(x) for x in v.frame_num.tolist()]
+    fnames = [f'faceid_{face_id:04d}_{fnum:04d}.png' for fnum in frame_nums]
+    dimgs = [Image.open(os.path.join(res['video'], fname)) for fname in fnames]
+    video = res['video']
+    score = res['score']
+    name = q.person_id.tolist()[0]
+    n = int(len(dimgs) / 11 ) + 1 
+
+    fig, axs = plt.subplots(nrows = n, ncols = 11,figsize=(15,15))
+    fig.suptitle(f'{name}, score={score:.2f}', fontsize=16)
+    for i,ax in enumerate(axs.flat):
+        ax.axis('off')
+        if i > len(dimgs):
+            continue
+        if i>0:
+            ax.imshow(dimgs[i-1])
+        else:
+            ax.imshow(qimg)
+
+    return fig 
+
+def generate_image_tag(image_data):
+    """Generates an HTML image tag from image data.
+
+    Args:
+    image_data: A byte string containing the image data.
+
+    Returns:
+    An HTML image tag.
+    """
+
+    encoded_image = base64.b64encode(image_data).decode('utf-8')
+    image_tag = f'<img src="data:image/png;base64,{encoded_image}"/>'
+    return image_tag
+
+
+
+
+
+def create_html_table_with_images(results, res_dir):
+    for i,res in enumerate(results):
+        fig = plot_one_result(res)
+        fig.savefig(f'/tmp/fig_{i:02d}.png')
+    plot_one_result(results[0])
+    doc = dump_html(results)
+    with open('/tmp/test.html','w') as h:
+        h.writelines(doc.getvalue())
+
+    res = results[0]
+    q = res['match_query']
+    v = res['match_corpus']        
+    qimg = Image.open(q.iloc[0].fname)
+    face_id = int(v.face_id.tolist()[0])
+    frame_nums = [int(x) for x in v.frame_num.tolist()]
+    fnames = [f'faceid_{face_id:04d}_{fnum:04d}.png' for fnum in frame_nums]
+    dimgs = [Image.open(os.path.join(res['video'], fname)) for fname in fnames]
+    video = res['video']
+    score = res['score']
+    name = q.person_id 
+
+                # Convert the PIL Image to a binary string
+    image_bytes = qimg.tobytes()
+                
+
+
+
+
+    
+
+    html = doc.render()
+
+
+
+
+
+    #     for image in row:
+    #   table_cell = html.Td(html.Img(src=image))
+    #   table_row.append(table_cell)
+    # table.append(table_row)
+
+#   with open(output_html_file_path, "w") as f:
+#     f.write(table.render())
+
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # input and output
@@ -267,9 +392,12 @@ if __name__ == '__main__':
     corpus_dataset = args.corpus_dataset
 
     # search_missing_usig_embeddings(query_dataset, corpus_dataset)
-    search_missing(query_dataset, corpus_dataset)
+    search_results = search_missing(query_dataset, corpus_dataset)
+    torch.save(search_results, '/tmp/search_results.pth')
+    search_results = torch.load('/tmp/search_results.pth')
+    # create_html_table_with_images(search_results, '/tmp/')
+    sys.exit()
 
-    search_missing('')
     logger.info(f'command line={sys.argv}')
     logging.info('hello')
     index_files = get_files2process(args.db_root, flt=filter_index_files) #[:4]
