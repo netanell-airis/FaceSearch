@@ -29,6 +29,51 @@ def get_html_cell(img, caption='',size=100):
     td = html.Td(div)
     return td
 
+
+def img_tbl_layout(img_list, captions,img_width=100,num_columns=10):
+    table_rows = list()
+    cells = list()
+    for img_dir,cap in zip(img_list, captions):
+        cells.append(get_html_cell(img_dir, cap))
+        if len(cells) % num_columns == 0:
+            table_rows.append(html.Tr(cells))
+            cells = list()
+    if len(cells):
+        table_rows.append(html.Tr(cells))
+    return html.Table(table_rows)
+
+def video_summary_layout(ftbl,video_root, group_by_faceid=False):
+    face_layouts = list()
+    all_imgs = list()
+    all_captions = list()
+    for fid,g in ftbl.groupby(by='face_id'):
+        fid = int(fid)
+        frames = g.frame_num.astype(int).tolist()
+        if fid >=0:
+            img_list = [os.path.join(video_root,f'faceid_{fid:04d}_{fn:04d}.png') for fn in frames]
+            captions = [f'{fid}'] * len(img_list)
+            layout = img_tbl_layout(img_list, captions)
+            face_layouts.append(layout)
+        else:
+            idx = g.idx.astype(int).tolist()
+            captions = [f'-1,{fn}' for fn,ix in zip(frames, idx)]
+            img_list = [os.path.join(video_root, f'face_{fn:05d}_{ix:04d}.png') for fn,ix in zip(frames, idx)]
+            face_layouts.append(img_tbl_layout(img_list, captions))
+        all_imgs += img_list 
+        all_captions += captions
+
+    if group_by_faceid:
+        layout = html.Div(face_layouts)
+    else:
+        layout = img_tbl_layout(all_imgs,all_captions)
+    
+    return layout
+
+
+
+
+
+
 def render_query_res(query_results):
     html_rows = list()
     html_tables = list()

@@ -2,6 +2,8 @@ import argparse
 import logging
 import os
 import sys
+from face_search import viz 
+
 from PIL import Image
 import numpy as np
 import pandas as pd
@@ -177,6 +179,23 @@ def search_missing_usig_embeddings(missing_db_root, index_root, K=10):
             fh.writelines('\n'.join(file_name_list))
     return cos_max_org, cos_amax
 
+def video_dash_summary(db_root, vid=0):
+    sdb = SearchIndex(512)
+    sdb.corpus_dir = db_root
+
+    with sdb as s:
+        ftbl = sdb.face_tbl
+        vtbl = sdb.video_tbl
+    video_root=vtbl.loc[vid].video_fname
+    tbl = ftbl[ftbl.video_id==vid]
+    layout = viz.video_summary_layout(tbl, video_root)
+    viz.serve_app(layout)
+    dbg = 1
+
+
+
+
+
 def debug_sigs(args):
     from deepface import DeepFace
     from deepface.DeepFace import functions
@@ -349,14 +368,11 @@ if __name__ == '__main__':
     root = os.environ['HOME']
     query_dataset = args.query_dataset 
     corpus_dataset = args.corpus_dataset
-
+    video_dash_summary(corpus_dataset)
     res_fname = os.path.split(query_dataset)
 
     # search_missing_usig_embeddings(query_dataset, corpus_dataset)
-    if 1:
-        search_results = search_missing(query_dataset, corpus_dataset)
-        torch.save(search_results, '/tmp/search_results.pth')
-    from face_search import viz 
+    search_results = search_missing(query_dataset, corpus_dataset)
     # search_results = torch.load('/tmp/search_results.pth')
     layout = viz.render_query_res(search_results)
     viz.serve_app(layout)
