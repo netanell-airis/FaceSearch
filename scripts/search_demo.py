@@ -82,53 +82,43 @@ def search_missing(missing_db_root, index_root, K=10):
     with corpus as sig_tbl:
         enorm = corpus.t_tbl.enorm.values
         ns = enorm.size 
-        sigs = sig_tbl['templates'][:ns]
-        nsigs = sigs / enorm[:,np.newaxis]        
+        tmplts = sig_tbl['templates'][:ns]
+        ntmplts = tmplts / enorm[:,np.newaxis]        
         file_name_list = list()
         with query as qtbl:
-            n0 = len(query.face_tbl)
-            cos_max = np.zeros((n0,K))
-            cos_amax = np.zeros((n0,K),dtype=np.int32)
-            qnorm = query.face_tbl.enorm.values
-            for i, g in query.face_tbl.groupby(by='face_id'):
-                ix = np.array(g.index)
-                m0 = len(g)                
-                qnsigs = qtbl['embeddings'][ix]
-                # qnsigs = qsigs / qnorm[ix][:,np.newaxis]
-                
-                cos_sim = nsigs @ qnsigs.transpose()
-                for k in range(K):
-                    cos_max[ix,k] = cos_sim.max(axis=0)
-                    cos_amax[ix,k] = cos_sim.argmax(axis=0)
-                    cos_sim[cos_amax[ix,k],np.arange(m0)] = 0
-                score = cos_max[ix,0].max()
-                fid = int(g.iloc[0].face_id)
-                logging.info(f'face_id={fid},num_faces={m0},max={score:.3f}')
+            n0 = len(query.t_tbl)
+            qnorm = query.t_tbl.enorm.values
+            qtmplts = query.sigs['templates'][:n0]
+            qntmplts = qtmplts / qnorm[:,np.newaxis]        
+            # later, when we have large number of query 
+            # and corpus templates, we can split the compute
+            cos_sim = qntmplts @ ntmplts.transpose()
+            cos_amax = np.argmax(cos_sim, axis=1)
+            cos_max = cos_sim[np.arange(cos_sim.shape[0]),cos_amax]
         cos_max_org = cos_max.copy()
+        qidx = np.argsort(-cos_max)
         for i in range(5):
-            score = cos_max.max()
-            # qi points to matching query
-            qi, qj = np.where(cos_max==score)
-            cos_max[qi,:] = 0
-            match_query = query.face_tbl.loc[qi]
-            # ti is pointing to matching template ()
-            ti = cos_amax[qi,qj]
-            video_id, face_id = corpus.t_tbl.loc[ti,['video_id','tid2fid']].values.tolist()[0]
-            face_id = int(face_id)
-            video_id = int(video_id)
-            video_fname = corpus.video_tbl.loc[video_id].video_fname    
-            t = corpus.face_tbl[(corpus.face_tbl.video_id==video_id) & (corpus.face_tbl.face_id == face_id)]
+            qi = qidx[i]
+            score  = cos_max[qi]
+            ti = cos_amax[qi]
+            q_face_id, q_video_id = query.t_tbl.loc[qi][['tid2fid','video_id']].astype(int)
+            c_face_id, c_video_id = corpus.t_tbl.loc[ti][['tid2fid','video_id']].astype(int)            
+            ftbl = query.face_tbl
+            match_query = ftbl[(ftbl.video_id == q_video_id) &(ftbl.face_id == q_face_id)]
+            ctbl = corpus.face_tbl
+            t = ctbl[(ctbl.video_id == c_video_id) &(ctbl.face_id == c_face_id)]            
             frame_nums = t.frame_num.tolist()
-            fnames = [f'faceid_{face_id:04d}_{frame_num:04d}.png' for frame_num in frame_nums]
-            fnames = [os.path.join(video_fname,x) for x in fnames]
+            video_root = corpus.video_tbl.loc[c_video_id].video_fname
+            fnames = [f'faceid_{c_face_id:04d}_{frame_num:04d}.png' for frame_num in frame_nums]
+            fnames = [os.path.join(video_root,x) for x in fnames]
             name = match_query.person_id.tolist()[0] 
             res = dict()
             res['score'] = score 
             res['match_corpus'] = t 
             res['match_query'] = match_query 
-            res['video'] = video_fname 
+            res['video'] = video_root
             search_results.append(res)
-            logging.info(f'matching {name} to {face_id}={score:4f}')
+            logging.info(f'matching {name} to {c_face_id}={score:4f}')
             logging.info(f'cosine_sim={score}')
         
     # return cos_max_org, cos_amax, search_results
