@@ -55,6 +55,7 @@ def faces2embeddings_gil(video_files):
         logging.info(f'working on video {video_file} with {len(face_list)} faces')
         det_list = list()
         aligned_faces_db = list()
+        aligned_faces_db_names = list()
         for ix, row in tqdm(db.iterrows()):
             frame_num = int(row.frame_num)
             idx = int(row.idx)
@@ -68,6 +69,7 @@ def faces2embeddings_gil(video_files):
 
             aligned_face = prepare_face_for_recognition(fname, landmarks)
             aligned_face.save(out_fname)
+            aligned_faces_db_names.append(out_fname)
             det_list.append(aligned_face is not None)
             bgr_tensor_input = to_input(aligned_face)
             if bgr_tensor_input.shape[1]> 3:
@@ -92,6 +94,7 @@ def faces2embeddings_gil(video_files):
         enorm = torch.concat([x[1] for x in elist])
         db['aligned'] = det_list
         db['enorm'] = enorm.cpu().numpy()
+        db['aligned_face_names'] = aligned_faces_db_names
         db.to_csv(os.path.join(process_dir, 'faces.csv'))
         fname = os.path.join(process_dir, 'embeddings.pth')
         logging.info(f'saving {e.shape[0]}x{e.shape[1]} embeddings into {fname}')

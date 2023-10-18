@@ -113,8 +113,11 @@ class FaceCoresetNet(LightningModule):
             return embeddings, norms
 
         else: #f_emb_to_t_emb
+            embeddings = torch.tensor(embeddings, device=self.device, dtype=torch.float32).unsqueeze(0)
+            norms = torch.norm(embeddings, dim=2)
             aggregate_embeddings, aggregate_norms, _ = self.aggregate_model(embeddings, norms, only_FPS)
-            return  aggregate_embeddings,  aggregate_norms
+            aggregate_embeddings = aggregate_embeddings.cpu().numpy()
+            return  aggregate_embeddings
 
 
 

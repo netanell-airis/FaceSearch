@@ -3,10 +3,12 @@ import re
 import numpy as np
 import scipy.sparse as sp
 from deepface import DeepFace
-from tqdm import tqdm 
+from tqdm import tqdm
+import torch
 
-def get_gallery_templates(face_ids, embeddings ):
+def get_gallery_templates(face_ids, embeddings, model=None ):
     import pandas as pd
+
     face_ids = np.uint32(face_ids)
     embedding_dim = embeddings.shape[1]
     t = pd.DataFrame(face_ids, columns=['face_id'])
@@ -15,7 +17,12 @@ def get_gallery_templates(face_ids, embeddings ):
     for face_id, g in t.groupby(by='face_id'):
         if face_id >=0:
             T = embeddings[g.index]
-            T = T.mean(axis=0)[np.newaxis,:]
+            if model == None:
+                T = T.mean(axis=0)[np.newaxis,:]
+            else:
+                with torch.no_grad():
+                    T = model(embeddings=T, mode='f_emb_to_t_emb')
+
             templates.append(T)
             tid_to_faceid.append(face_id)
     T = np.concatenate(templates, axis=0)

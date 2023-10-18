@@ -47,6 +47,9 @@ def get_args():
 
     parent_parser.add_argument('--coreset_size', default=3, type=int)
     parent_parser.add_argument('--input_directory')
+    parent_parser.add_argument('--output_directory')
+    parent_parser.add_argument('--aggregation')
+    parent_parser.add_argument('--action')
 
     parser = add_task_arguments(parent_parser)
     args = parser.parse_args()
