@@ -58,7 +58,6 @@ class VideoTracker(object):
         self.margin_ratio = args.margin_ratio
         self.root_dir = os.path.splitext(video_fname)[0] + '.pipeline'
         self.db_fname = os.path.join(self.root_dir, 'faces.csv')
-        
 
         self.db = pd.read_csv(self.db_fname)           # 0.2
 
@@ -79,11 +78,11 @@ class VideoTracker(object):
 
     def __enter__(self):
         # ************************* Load video from camera *************************
-        self.frames = list(set(self.db['frame_num'].values))
+        self.frames = list(set(self.db['frame_num'].values))  # list of frame nums
         self.cur_frame = 0
         frame_num = self.frames[0]
-        img_dir = os.path.join(self.root_dir, f'frame_{frame_num:04d}.png')
-        img = Image.open(img_dir)
+        img_path = os.path.join(self.root_dir, f'frame_{frame_num:04d}.png')
+        img = Image.open(img_path)
         self.im_width = img.size[0]
         self.im_height = img.size[1]
         return self
@@ -99,12 +98,11 @@ class VideoTracker(object):
         last_out = None
         face_ids = list()
         for frame_num in self.frames:
+            img_path = os.path.join(self.root_dir, f'frame_{frame_num:04d}.png')
             t0 = time.time()
-            img_dir = os.path.join(self.root_dir, f'frame_{frame_num:04d}.png')
-            t0 = time.time()
-            img0 = Image.open(img_dir)
+            img0 = Image.open(img_path)
             # Inference *********************************************************************
-            db_frame = self.db[self.db.frame_num==frame_num]
+            db_frame = self.db[self.db.frame_num==frame_num]  # db rows of faces for current frame
             outputs = self.image_track(img0, db_frame)        # (#ID, 5) x1,y1,x2,y2,id
             t1 = time.time()
             logging.info(f'Frame {frame_num} Done in {t1-t0:.3f}secs')
@@ -164,7 +162,7 @@ class VideoTracker(object):
         boxes = db_frame[['x','y','w','h']].values
         confs = db_frame['confidence'].values
         bbox_xywh = boxes.copy() # xyxy2xywh(boxes)    # (#obj, 4)     xc,yc,w,h
-        bbox_xywh[:, 2:] = bbox_xywh[:, 2:] * (1 + self.margin_ratio)
+        bbox_xywh[:, 2:] = bbox_xywh[:, 2:] * (1 + self.margin_ratio)  # add height/width margins
         im0_arr = np.array(im0)
         outputs = self.deepsort.update(bbox_xywh, confs, im0_arr)
         return outputs
