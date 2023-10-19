@@ -2,9 +2,9 @@ import os
 import io
 import dash
 import dash_table as dt
-import dash_core_components as dcc
+# import dash_core_components as dcc
 import dash_html_components as html
-import plotly.express as px
+# import plotly.express as px
 from PIL import Image
 import base64
 
@@ -51,7 +51,7 @@ def video_summary_layout(ftbl,video_root, group_by_faceid=False):
         frames = g.frame_num.astype(int).tolist()
         if fid >=0:
             img_list = [os.path.join(video_root,f'faceid_{fid:04d}_{fn:04d}.png') for fn in frames]
-            captions = [f'{fid}'] * len(img_list)
+            captions = [f'{fid},{fr}' for fr in frames]
             layout = img_tbl_layout(img_list, captions)
             face_layouts.append(layout)
         else:
@@ -62,11 +62,13 @@ def video_summary_layout(ftbl,video_root, group_by_faceid=False):
         all_imgs += img_list 
         all_captions += captions
 
+    h1 = html.H1(os.path.split(video_root)[-1])
     if group_by_faceid:
         layout = html.Div(face_layouts)
     else:
         layout = img_tbl_layout(all_imgs,all_captions)
     
+    layout = html.Div([h1, layout])
     return layout
 
 
@@ -123,12 +125,12 @@ def render_query_res(query_results):
     return layout 
 
 
-def serve_app(layout):
+def serve_app(layout, port = 8080):
     # Create a Dash app
     app = dash.Dash('serve_app')
     # Set the app layout
     app.layout = layout
-    app.run_server(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+    app.run_server(host='0.0.0.0', port=port, debug=False, use_reloader=False)
     # import plotly.io as pio
     # pio.write_html(layout, file='/tmp/table11.html')
 
