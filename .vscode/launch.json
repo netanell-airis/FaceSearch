@@ -34,8 +34,11 @@
             "program": "${workspaceFolder}/scripts/face_to_faceid.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--input_directory",
-                 "${userHome}/data/debug_0",
+            "args": [
+                "--input_directory",
+                 "${userHome}/work/data/FaceSearch/test_video/",
+                 "--config_deepsort",
+                 "${workspaceFolder}/configs/deep_sort.yaml"
             ]
         },
 
