@@ -1,6 +1,7 @@
 scripts/pipeline_anna.sh
 
 src/FaceCoresetNet/models/FaceCoresetNet.ckpt
+runs/
 
 __pycache__/
 *.egg-info/
