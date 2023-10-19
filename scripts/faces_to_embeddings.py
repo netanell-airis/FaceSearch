@@ -73,7 +73,7 @@ def faces2embeddings_gil(video_files):
 
             aligned_face = prepare_face_for_recognition(fname, landmarks)
             aligned_face.save(out_fname)
-            det_list.append(aligned_face is not None)
+            det_list.append(aligned_face is not None)  # binary
             bgr_tensor_input = to_input(aligned_face)
             if bgr_tensor_input.shape[1]> 3:
                 dbg = 1
@@ -81,7 +81,7 @@ def faces2embeddings_gil(video_files):
 
         # process images in batches 
         i0 = 0
-        bs = BATCH_SIZE  # batch size
+        bs = BATCH_SIZE  
         n0 = len(aligned_faces_db)
         elist = list()
         tbar = tqdm(desc='extract emb', total=n0)
