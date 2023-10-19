@@ -24,9 +24,14 @@ from FaceCoresetNet.face_align_utils import prepare_face_for_recognition
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
+BATCH_SIZE = 16
+
 def load_embedding_model():
-    path_to_facecoresetnet_checkpoint = os.path.join(os.environ['HOME'],'models',
-                                                      'FaceCoresetNet.ckpt')
+    # path_to_facecoresetnet_checkpoint = os.path.join(os.environ['HOME'],'models',
+    #                                                   'FaceCoresetNet.ckpt')
+    # Assuming checkpoint is under FaceSearch/src/FaceCoresetNet/models/
+    path_to_facecoresetnet_checkpoint = os.path.join('src','FaceCoresetNet','models',
+                                                     'FaceCoresetNet.ckpt')
     args = facecoreset_config.get_args()
     hparams = dotdict(vars(args))
     model = FaceCoresetNet(**hparams)
@@ -74,8 +79,9 @@ def faces2embeddings_gil(video_files):
                 dbg = 1
             aligned_faces_db.append(bgr_tensor_input)
 
+        # process images in batches 
         i0 = 0
-        bs = 16
+        bs = BATCH_SIZE  # batch size
         n0 = len(aligned_faces_db)
         elist = list()
         tbar = tqdm(desc='extract emb', total=n0)
