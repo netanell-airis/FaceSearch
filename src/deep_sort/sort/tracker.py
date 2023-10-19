@@ -55,7 +55,9 @@ class Tracker:
         """
         for track in self.tracks:
             # for each obj, predict state on time T with KF based on t-1
-            track.predict(self.kf)  # 只更新KF的参数mean variance, appearance feature 还是之前的
+            # Only the parameters mean, variance and appearance feature 
+            # of KF are updated as before.
+            track.predict(self.kf)  
 
     def update(self, detections):
         # STEP 2: Then we update
@@ -72,51 +74,53 @@ class Tracker:
             self._match(detections)     # cascade matching(appearance) + IOU matching
 
         # Update track set.
-        # MT: track成功, 根据当前的观测detection，更新KF 矩阵, 加入当前的 appearance feature
+        # MT: track is successful, update the KF matrix based on the current 
+        # observation detection, and add the current appearance feature
         for track_idx, detection_idx in matches:
             self.tracks[track_idx].update(
                 self.kf, detections[detection_idx])
 
-        # UT: 丢失的track，标记miss
+        # UT: Lost track, marked miss
         for track_idx in unmatched_tracks:
             self.tracks[track_idx].mark_missed()
 
-        # UD: 新建新的track, 分类新ID
+        # UD: Create a new track and classify a new ID
         for detection_idx in unmatched_detections:
-            #
-            self._initiate_track(detections[detection_idx])     # 新建Track obj, 加入self.track list
-
-        # 舍弃删除的track
+            # Create a new Track obj and add it to self.track list
+            self._initiate_track(detections[detection_idx])     
+        # Discard deleted tracks
         self.tracks = [t for t in self.tracks if not t.is_deleted()]
 
         # Update distance metric.
-        active_targets = [t.track_id for t in self.tracks if t.is_confirmed()]      # 保留confirmed track 的ID
+        active_targets = [t.track_id for t in self.tracks if t.is_confirmed()]      # Keep the confirmed track ID
 
         features, targets = [], []
-        for track in self.tracks:           # 对所有confirmed 的 track object
+        for track in self.tracks:           # For all confirmed track objects
             if not track.is_confirmed():
                 continue
             features += track.features
-            targets += [track.track_id for _ in track.features] # 有几个feature，就copy ID 几次
-            track.features = []     # 清空当前track obj 的feature, 下次update的时候添加一个feature
+            targets += [track.track_id for _ in track.features] # if there are several features, just copy the ID several times
+            track.features = []     # Clear the features of the current track obj and add a feature during the next update.
 
-        # 对所有confirmed 的track 进行部分拟合，用新的数据更新测量距离
+        # Perform partial fitting on all confirmed tracks and update measured distances with new data
         self.metric.partial_fit(
             np.asarray(features), np.asarray(targets), active_targets)
 
     def _match(self, detections):
-        # 基于外观信息和马氏距离，计算卡尔曼滤波预测的tracks和当前时刻检测到的detections的代价矩阵
+        # Based on the appearance information and Mahalanobis distance, calculate the 
+        # cost matrix of the tracks predicted by Kalman filter and the detections 
+        # detected at the current moment.
         def gated_metric(tracks, dets, track_indices, detection_indices):
-            # Tracks
-            features = np.array([dets[i].feature for i in detection_indices])   # 当前帧观测到的appearance feature
-            # (检测到的人数, 512)
+            #Tracks
+            features = np.array([dets[i].feature for i in detection_indices]) # Appearance feature observed in the current frame
+            # (number of people detected, 512)
 
-            targets = np.array([tracks[i].track_id for i in track_indices])     #
+            targets = np.array([tracks[i].track_id for i in track_indices]) #
 
-            # 基于外观信息，计算tracks和detections的余弦距离代价矩阵
-            cost_matrix = self.metric.distance(features, targets)   # (track 中的人数，检测到的人数)
+            # Based on appearance information, calculate the cosine distance cost matrix of tracks and detections
+            cost_matrix = self.metric.distance(features, targets) # (number of people in track, number of people detected)
 
-            # 基于马氏距离，过滤掉代价矩阵中一些不合适的项 (将其设置为一个较大的值)
+            # Based on Mahalanobis distance, filter out some inappropriate items in the cost matrix (set it to a larger value)
             cost_matrix = linear_assignment.gate_cost_matrix(
                 self.kf, cost_matrix, tracks, dets, track_indices,
                 detection_indices)
@@ -141,7 +145,7 @@ class Tracker:
             i for i, t in enumerate(self.tracks) if not t.is_confirmed()]   # unconfirmed: directly go to IOU match
 
         # Associate confirmed tracks using appearance features.(Matching_Cascade) ***************************
-        # 外观特征 + 马氏距离筛选     仅对confirmed track
+        # Appearance features + Mahalanobis distance filtering only for confirmed track
         matches_a, unmatched_tracks_a, unmatched_detections = \
             linear_assignment.matching_cascade(
                 gated_metric, self.metric.matching_threshold, self.max_age,

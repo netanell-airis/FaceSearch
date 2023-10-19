@@ -33,4 +33,3 @@ def save_table(video_root, tbl, tbl_name='frames'):
     fname = name2fn[tbl_name](video_root)
     logging.info(f'saving {tbl_name} to {fname}')
     tbl.to_csv(fname, index=False)
-
