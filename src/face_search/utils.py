@@ -4,6 +4,7 @@ import numpy as np
 import scipy.sparse as sp
 from deepface import DeepFace
 from tqdm import tqdm 
+import torch
 
 def get_gallery_templates(face_ids, embeddings ):
     face_ids = np.uint32(face_ids)
@@ -77,11 +78,13 @@ def get_video_files(args):
 def is_video(fname):
     return os.path.splitext(fname)[-1].lower() == '.mp4'
 
+
 def is_video_frame(fname):
     r0 = re.compile('frame_(\d+).png')
     g = r0.search(fname)
     frame_num = g.groups()[0] if g else None
     return frame_num 
+
 
 def is_video_face_roi(fname):
     r0 = re.compile('face_(\d+)_(\d).png')
@@ -89,14 +92,63 @@ def is_video_face_roi(fname):
     frame_num = g.groups()[0] if g else None
     return frame_num
     
+
 def is_img_fname(fname):
     ext = os.path.splitext(fname)[-1]
     ext = ext.lower()
     return ext in ['.jpeg','.jpg','.png','tif']
 
 
-
 def get_video_process_dir(video_path):
     process_dir = os.path.splitext(video_path)[0] + '.pipeline'
     os.makedirs(process_dir, exist_ok=True)
     return process_dir
+
+
+def xyxy2xcycwh(x):
+    # Convert nx4 boxes from [x1, y1, x2, y2] to [xc, yc, w, h] where xy1=top-left, xy2=bottom-right
+    y = torch.zeros_like(x) if isinstance(x, torch.Tensor) else np.zeros_like(x)
+    y[:, 0] = (x[:, 0] + x[:, 2]) / 2  # x center
+    y[:, 1] = (x[:, 1] + x[:, 3]) / 2  # y center
+    y[:, 2] = x[:, 2] - x[:, 0]  # width
+    y[:, 3] = x[:, 3] - x[:, 1]  # height
+    return y
+
+
+def xyxy2xywh(x):
+    # Convert nx4 boxes from [x1, y1, x2, y2] to [x1, y1, w, h] where xy1=top-left, xy2=bottom-right
+    y = torch.zeros_like(x) if isinstance(x, torch.Tensor) else np.zeros_like(x)
+    y[:, 0] = x[:, 0] # x left
+    y[:, 1] = x[:, 1] # y top
+    y[:, 2] = x[:, 2] - x[:, 0]  # width
+    y[:, 3] = x[:, 3] - x[:, 1]  # height
+    return y
+
+
+def xcycwh2xywh(x):
+    # Convert nx4 boxes from [xc, yc, w, h] to [x1, y1, w, h] where xy1=top-left, xyc=center
+    y = torch.zeros_like(x) if isinstance(x, torch.Tensor) else np.zeros_like(x)
+    y[:, 0] = x[:, 0] - (x[:, 2] / 2 )  # x left
+    y[:, 1] = x[:, 1] - (x[:, 3] / 2)  # y top
+    y[:, 2] = x[:, 2]  # width
+    y[:, 3] = x[:, 3]  # height
+    return y
+
+def xcycwh2xyxy(x):
+    # Convert nx4 boxes from [xc, yc, w, h] to [x1, y1, x2, y2] where xy1=top-left, xyc=center, xy2=bottom-right
+    y = torch.zeros_like(x) if isinstance(x, torch.Tensor) else np.zeros_like(x)
+    y[:, 0] = x[:, 0] - (x[:, 2] / 2 )  # x left
+    y[:, 1] = x[:, 1] - (x[:, 3] / 2)  # y top
+    y[:, 2] = x[:, 0] + (x[:, 2] / 2 )  # x right
+    y[:, 3] = x[:, 1] + (x[:, 3] / 2)  # y bottom
+    return y
+
+
+def xywh2xyxy(x):
+    # Convert nx4 boxes from [x1, y1, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
+    y = torch.zeros_like(x) if isinstance(x, torch.Tensor) else np.zeros_like(x)
+    y[:, 0] = x[:, 0]  # x left
+    y[:, 1] = x[:, 1]  # y top
+    y[:, 2] = x[:, 0] + x[:, 2]  # x right
+    y[:, 3] = x[:, 1] + x[:, 3]  # y bottom
+    return y

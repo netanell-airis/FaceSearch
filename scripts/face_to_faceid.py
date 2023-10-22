@@ -19,6 +19,8 @@ from face_search import io
 # face detector
 #from facenet_pytorch import MTCNN
 
+from face_search.utils import xyxy2xywh, xcycwh2xywh
+
 import sys
 
 currentUrl = os.path.dirname(__file__)
@@ -26,7 +28,7 @@ sys.path.append(os.path.abspath(os.path.join(currentUrl, 'yolov5')))
 
 
 # cudnn.benchmark = True
-
+IOU_THRESH = 0.6  # IoU threshold between tracker bounding box and detection bounding box
 
 def calc_iou(xywh1, xywh2):
     x1 = xywh1[:,0][:,np.newaxis]
@@ -109,21 +111,23 @@ class VideoTracker(object):
             avg_fps.append(t1 - t0)
 
             if len(outputs) > 0:                
-                bbox_xyxy = outputs[:, :4]
-                bbox_xywh = xyxy2xywh(bbox_xyxy)
-                b1 = db_frame[['x','y','w','h']].values
+                bbox_xyxy = outputs[:, :4]  # output box coordinates [x1, y1, x2, y2]
+                bbox_xywh = xyxy2xywh(bbox_xyxy)  # convert to [xc, yc, w, h]
+                b1 = db_frame[['x','y','w','h']].values  # [xc, yc, w, h]
+                b1_xywh = xcycwh2xywh(b1)
                 #iou between boxes in frame and boxes from tracker 
-                iou = calc_iou(b1, bbox_xywh)
+                iou = calc_iou(b1_xywh, bbox_xywh)
                 face_ids = iou.argmax(axis=1)
                 new_face_ids = (0 * face_ids)-1
                 for ix in range(face_ids.size):
                     tid = face_ids[ix]
-                    if iou[ix,tid] > 0.6 and ix == iou[:,tid].argmax():
+                    if iou[ix,tid] > IOU_THRESH and ix == iou[:,tid].argmax():
                         new_face_ids[ix] = outputs[tid,-1]
                 # outputs[:,-1] = new_face_ids
                 db_frame['face_id'] = new_face_ids
                 self.db.loc[db_frame.index,'face_id'] = new_face_ids
 
+                # Save face crop (with margins) with face_id
                 db_tmp = db_frame[db_frame['face_id'] >=0]
                 for ix in range(len(db_tmp)):
                     x0,y0,w,h = db_tmp.iloc[ix][['x','y','w','h']]
@@ -166,16 +170,6 @@ class VideoTracker(object):
         im0_arr = np.array(im0)
         outputs = self.deepsort.update(bbox_xywh, confs, im0_arr)
         return outputs
-
-
-def xyxy2xywh(x):
-    # Convert nx4 boxes from [x1, y1, x2, y2] to [x, y, w, h] where xy1=top-left, xy2=bottom-right
-    y = torch.zeros_like(x) if isinstance(x, torch.Tensor) else np.zeros_like(x)
-    y[:, 0] = (x[:, 0] + x[:, 2]) / 2  # x center
-    y[:, 1] = (x[:, 1] + x[:, 3]) / 2  # y center
-    y[:, 2] = x[:, 2] - x[:, 0]  # width
-    y[:, 3] = x[:, 3] - x[:, 1]  # height
-    return y
 
 
 def faces2faceids(video_files,args):
