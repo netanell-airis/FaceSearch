@@ -168,11 +168,11 @@ class KalmanFilter(object):
             self._std_weight_position * mean[3],
             1e-1,
             self._std_weight_position * mean[3]]
-        innovation_cov = np.diag(np.square(std))        # 初始化噪声矩阵R
+        innovation_cov = np.diag(np.square(std))  # Initialize the noise matrix R
 
-        mean = np.dot(self._update_mat, mean)           # 将均值向量映射到检测空间，即Hx'
+        mean = np.dot(self._update_mat, mean)  # Map the mean vector to the detection space, that is, Hx'
         covariance = np.linalg.multi_dot((
-            self._update_mat, covariance, self._update_mat.T))  # 将协方差矩阵映射到检测空间，即HP'H^T
+            self._update_mat, covariance, self._update_mat.T)) # Map the covariance matrix to the detection space, i.e. HP'H^T
 
         # Hx'
         # S = HP'H^(T) + R

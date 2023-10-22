@@ -103,6 +103,7 @@ class Tracker:
             track.features = []     # Clear the features of the current track obj and add a feature during the next update.
 
         # Perform partial fitting on all confirmed tracks and update measured distances with new data
+        # Anna: here we just append the new feature vector for the active targets (and remove old ones if above budget)
         self.metric.partial_fit(
             np.asarray(features), np.asarray(targets), active_targets)
 
@@ -155,7 +156,7 @@ class Tracker:
         # for IOU match: unconfirmed + u
         iou_track_candidates = unconfirmed_tracks + [
             k for k in unmatched_tracks_a if
-            self.tracks[k].time_since_update == 1]  # # 刚刚没有匹配上
+            self.tracks[k].time_since_update == 1]  # There was no match just now
 
         unmatched_tracks_a = [
             k for k in unmatched_tracks_a if

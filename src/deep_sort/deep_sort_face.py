@@ -46,7 +46,7 @@ class DeepSortFace(object):
         detections = [Detection(bbox_tlwh[i], conf, features[i]) for i, conf in enumerate(confidences) if
                       conf > self.min_confidence]
 
-        # run on non-maximum supression (useless) *******************************************************************
+        # run non-maximum supression (useless) *******************************************************************
         boxes = np.array([d.tlwh for d in detections])
         scores = np.array([d.confidence for d in detections])
         indices = non_max_suppression(boxes, self.nms_max_overlap, scores)  # Here, nms_max_overlap is 1

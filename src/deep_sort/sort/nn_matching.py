@@ -152,7 +152,7 @@ class NearestNeighborDistanceMetric(object):
             if self.budget is not None:
                 self.samples[target] = self.samples[target][-self.budget:]
 
-        #  筛选激活的track
+        #  Filter activated tracks
         self.samples = {k: self.samples[k] for k in active_targets}
 
     def distance(self, features, targets):

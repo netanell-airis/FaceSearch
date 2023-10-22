@@ -138,12 +138,12 @@ class Track:
             The associated detection.
 
         """
-        # 基于当前观测的结果，更新 KF 的mean variance 矩阵
+        # Based on the results of the current observation, update the mean variance matrix of KF
         self.mean, self.covariance = kf.update(
             self.mean, self.covariance, detection.to_xyah())
-        # 把当前的观测 feature 加入 feature list
+        # Add the current observed feature to the feature list
         self.features.append(detection.feature)
-        # 这里的features 长度永远是1
+        # The length of features here is always 1
 
         self.hits += 1
         self.time_since_update = 0
