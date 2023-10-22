@@ -29,14 +29,15 @@ class DeepSortFace(object):
         # tracker maintain a list contains(self.tracks) for each Track object
         self.tracker = Tracker(metric, max_iou_distance=max_iou_distance, max_age=max_age, n_init=n_init)
 
-    def update(self, bbox_xywh, confidences, ori_img):
+    def update(self, bbox_xywh, confidences, ori_img, features=None):
         # bbox_xywh (#obj,4), [xc,yc, w, h]     bounding box for each person
         # conf (#obj,1)
 
         self.height, self.width = ori_img.shape[:2]
 
         # get appearance feature with neural network (Deep) *********************************************************
-        features = self._get_features(bbox_xywh, ori_img)
+        if features is None:
+            features = self._get_features(bbox_xywh, ori_img)
 
         bbox_tlwh = self._xywh_to_tlwh(bbox_xywh)  # # [cx,cy,w,h] -> [x1,y1,w,h]   top left
 

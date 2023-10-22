@@ -22,6 +22,8 @@ from face_search import io
 from face_search.utils import xyxy2xywh, xcycwh2xywh
 
 import sys
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 currentUrl = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(currentUrl, 'yolov5')))
@@ -60,6 +62,12 @@ class VideoTracker(object):
         self.margin_ratio = args.margin_ratio
         self.root_dir = os.path.splitext(video_fname)[0] + '.pipeline'
         self.db_fname = os.path.join(self.root_dir, 'faces.csv')
+        e_fname = os.path.join(self.root_dir, 'embeddings.pth')
+        self.embeddings = None
+        if os.path.isfile(e_fname):             
+            self.embeddings = torch.load(e_fname)
+
+        
 
         self.db = pd.read_csv(self.db_fname)           # 0.2
 
@@ -105,7 +113,10 @@ class VideoTracker(object):
             img0 = Image.open(img_path)
             # Inference *********************************************************************
             db_frame = self.db[self.db.frame_num==frame_num]  # db rows of faces for current frame
-            outputs = self.image_track(img0, db_frame)        # (#ID, 5) x1,y1,x2,y2,id
+            features = None
+            if self.embeddings is not None:
+                features = self.embeddings[db_frame.index]
+            outputs = self.image_track(img0, db_frame, features)        # (#ID, 5) x1,y1,x2,y2,id
             t1 = time.time()
             logging.info(f'Frame {frame_num} Done in {t1-t0:.3f}secs')
             avg_fps.append(t1 - t0)
@@ -157,7 +168,7 @@ class VideoTracker(object):
         logging.info(f'Total time {dt:.3f}s')
 
 
-    def image_track(self, im0, db_frame):
+    def image_track(self, im0, db_frame, features = None):
         """
         :param im0: original image, BGR format cv2
         :return:
@@ -168,7 +179,7 @@ class VideoTracker(object):
         bbox_xywh = boxes.copy() # xyxy2xywh(boxes)    # (#obj, 4)     xc,yc,w,h
         bbox_xywh[:, 2:] = bbox_xywh[:, 2:] * (1 + self.margin_ratio)  # add height/width margins
         im0_arr = np.array(im0)
-        outputs = self.deepsort.update(bbox_xywh, confs, im0_arr)
+        outputs = self.deepsort.update(bbox_xywh, confs, im0_arr,features)
         return outputs
 
 

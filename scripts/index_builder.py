@@ -12,6 +12,11 @@ import face_search.utils as utils
 from face_search.search_index import SearchIndex
 from face_search import io
 import re 
+from FaceCoresetNet import config as facecoreset_config
+from FaceCoresetNet.train_val_template import FaceCoresetNet
+from FaceCoresetNet.utils import dotdict
+import torch
+
 
 def build_index(args):
     """
@@ -28,10 +33,34 @@ def build_index(args):
     build_template_db(args, corpus)
 
 
+
+def load_embedding_model():
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    path_to_facecoresetnet_checkpoint = os.path.join(os.environ['HOME'],'models',
+                                                      'FaceCoresetNet.ckpt')
+    args = facecoreset_config.get_args()
+    hparams = dotdict(vars(args))
+    model = FaceCoresetNet(**hparams)
+    #checkpoint = torch.load(path_to_facecoresetnet_checkpoint, map_location=torch.device(device))
+    checkpoint = torch.load(path_to_facecoresetnet_checkpoint, map_location=torch.device(device))
+    model.load_state_dict(checkpoint['state_dict'])
+    #model.aggregate_model.gamma = torch.nn.Parameter(torch.tensor(0.0))
+    model.eval()
+    model.to(device)
+
+    return model
+
+
 def build_template_db(args, corpus=None):
     """
     requires corpus_dir
     """
+
+    if args.aggregation == 'FaceCoresetNet':
+        model = load_embedding_model()
+    else:
+        model = None
+
     if corpus is None:
         corpus_dir = args.output_directory
         corpus = SearchIndex(512)
@@ -53,16 +82,13 @@ def build_template_db(args, corpus=None):
             norms = vg.enorm.values 
             E_vid = E_vid * norms[:,np.newaxis]
             fid = vg.face_id.values
-            T = utils.get_gallery_templates(fid, E_vid)
-            tid2fid = np.arange(int(fid.max()+1))
-            tn = np.linalg.norm(T,axis=1)
-            tid2fid = tid2fid[tn >0]
-            T = T[tn > 0]
+            T, tid2fid = utils.get_gallery_templates(fid, E_vid, model)
+            tid2fid = np.array(tid2fid)[:,np.newaxis]
             i1 = i0 + T.shape[0]
             sig_tbl['templates'][i0:i1] = T
             enorm = np.linalg.norm(T, axis=1)
             i0 = i1
-            et = np.concatenate((enorm[:,np.newaxis], tid2fid[:,np.newaxis]),axis=1)
+            et = np.concatenate((enorm[:,np.newaxis], tid2fid),axis=1)
             ttbl = pd.DataFrame(et, columns=['enorm','tid2fid'])
             ttbl['video_id'] = vix
             t_tbl_lst.append(ttbl)
@@ -113,7 +139,11 @@ if __name__ == "__main__":
         help="The root directory containing video frames")
     parser.add_argument('--output_directory',
         help="The root directory to save the dataset")
+    parser.add_argument('--aggregation',choices=('FaceCoresetNet', 'avg_pool'),
+        help="Aggregation method")
+
     args = parser.parse_args()
+
 
     # if 'Users' in os.environ['HOME']:
     #     args.input_directory = '/Users/eranborenstein/data/missing_faces.pipeline'

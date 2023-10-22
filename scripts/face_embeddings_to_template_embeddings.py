@@ -15,13 +15,11 @@ from face_search.fs_logger import logger_init
 from face_search.utils import is_video_frame, get_video_process_dir
 from face_search.utils import is_video, get_files2process, is_video_face_roi
 #from face_search.face_alignment.align import get_aligned_face
-from face_search.adanet import build_model
-from FaceCoresetNet import head
-
+import shutil
 from FaceCoresetNet import config as facecoreset_config
 from FaceCoresetNet.train_val_template import FaceCoresetNet
 from FaceCoresetNet.utils import dotdict
-from FaceCoresetNet.face_align_utils import prepare_face_for_recognition
+
 
 #from mtcnn_pytorch.src.align_trans import get_reference_facial_points, warp_and_crop_face
 
@@ -67,33 +65,48 @@ def load_embedding_model():
     model.eval()
     return model
 
-def f_embeddings2t_embeddings(video_files):
+def f_embeddings2t_embeddings(video_files, mode='FaceCoresetNet'):
 
     model = load_embedding_model()
-
+    #mode = 'avg_pool'
     # Iterate over each video file
     for video_file in video_files:
         t0 = time.time()
         process_dir = get_video_process_dir(video_file)
         db = pd.read_csv(os.path.join(process_dir, 'faces.csv',))
 
-        faces_group_by_id = db.groupby(['idx'])
+        faces_group_by_id = db.groupby(['face_id'])
         templates = []
         fname = os.path.join(process_dir, 'embeddings.pth')
         face_emb = torch.load(fname)
 
         template_emb_list = []
         for key, group in faces_group_by_id:
+            if key == -1:
+                continue
+            template_dir = os.path.join(process_dir, 't_' + str(key))
+            os.makedirs(template_dir, exist_ok=True)
             indexes = [i for i in group['Unnamed: 0'].iloc]
+            for face_file in group['aligned_face_names']:
+                shutil.copy(face_file, template_dir)
             template = [face_emb[i].unsqueeze(0) for i in indexes]
-            norms = torch.tensor([i for i in group['enorm']]).unsqueeze(0)
+            norms = torch.tensor([i for i in group['enorm']])
             template_emb = torch.cat(template, dim=0 )
 
-            with torch.no_grad():
-                template_emb = template_emb.unsqueeze(0)
-                template_emb, template_emb_norm = model(templates=template, compute_feature=True, embeddings=template_emb, norms=norms, mode='f_emb_to_t_emb')
-                unnorm_template_emb = template_emb * template_emb_norm
+            if mode == 'FaceCoresetNet':
+                norms = norms.unsqueeze(0)
+                with torch.no_grad():
+                    template_emb = template_emb.unsqueeze(0)
+                    template_emb, template_emb_norm = model(templates=template, compute_feature=True, embeddings=template_emb, norms=norms, mode='f_emb_to_t_emb')
+                    unnorm_template_emb = template_emb * template_emb_norm
+                    template_emb_list.append(unnorm_template_emb)
+            else:
+                #avg pool
+                norms = norms.unsqueeze(-1)
+                unnorm_template_emb = template_emb * norms
+                unnorm_template_emb = unnorm_template_emb.mean(dim=0)
                 template_emb_list.append(unnorm_template_emb)
+
 
         template_emb_list = torch.cat(template_emb_list, dim=0)
         template_emb_fname = os.path.join(process_dir, 'template_embeddings.pth')
