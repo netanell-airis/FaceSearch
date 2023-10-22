@@ -29,6 +29,7 @@ class FaceDetector:
         self.embedding_dim = 512
         self.embeddings = np.zeros((0,self.embedding_dim))
     
+
     def __call__(self, frame):
         frame_num = self.frame_num
         size = frame.shape[:2]
@@ -50,7 +51,6 @@ class FaceDetector:
         frame_res['score'] = scores 
         frame_res['frame_num'] = self.frame_num
         
-
         # res1 = RetinaFace.detect_faces(frame, model=self.model)
         # frame_results, faces = self.process_retina_output(res, frame, frame_num)            
         self.frame_results.append(frame_res)
@@ -58,7 +58,8 @@ class FaceDetector:
         self.faces = faces
         return frame_res, faces
     
-    def detect_and_track(self, frame, idx=0,scale=1):
+
+    def detect_and_track(self, frame, idx=0, scale=1):
         """
         returns detector_output list of dictionary with:
         one item for each detected face:
@@ -98,12 +99,8 @@ class FaceDetector:
             new_row['face'] = faces[ix]
             revised_output.append(new_row)
         detector_output = revised_output
-            
-
-
         
         # extract embeddings
-
         batch = [functions.normalize_input(x[0].copy(), normalization='ArcFace') for x in faces]
         batch = [np.expand_dims(img, axis=0) for img in batch]
         batch = np.concatenate(batch, axis=0)
@@ -138,6 +135,7 @@ class FaceDetector:
         self.detector_outputs += detector_output
         # print(f'track_face_ids time={time.time()-t0}')
         return detector_output
+
 
     def extract_bboxes(self, frame, db):
         """
@@ -181,7 +179,6 @@ class FaceDetector:
                     img_pixels = image.img_to_array(current_img)  # what this line doing? must?
                     img_pixels = np.expand_dims(img_pixels, axis=0)
                     img_pixels /= 255  # normalize input in [0, 1]
-
 
                     extracted_faces.append(img_pixels)
 
@@ -250,7 +247,7 @@ class FaceDetector:
         return frame_results, faces
 
 
-def process_bbox_detections(batch_frames, batch_frame_nums, batch_boxes,process_dir):
+def save_bbox_detections(batch_frames, batch_frame_nums, batch_boxes,process_dir):
     for ix, img in enumerate(batch_frames):
         frame_num = batch_frame_nums[ix]
         for bid, box in enumerate(batch_boxes[ix]):
@@ -259,11 +256,14 @@ def process_bbox_detections(batch_frames, batch_frame_nums, batch_boxes,process_
             face_img = img.crop((x0,y0,x1,y1))                    
             output_filename = os.path.join(process_dir, f'face_{frame_num:05d}_{bid:04d}.png')
             face_img.save(output_filename, 'PNG')
+
+
 def filter_list(src, det):
     dst = [src[k] for k in range(len(src)) if det[k]]
     return dst 
 
-def detect_in_batches(video_fname):
+
+def detect_in_batches(video_fname, save_detections=False):
     from facenet_pytorch import MTCNN
     import cv2
     from PIL import Image
@@ -316,8 +316,10 @@ def detect_in_batches(video_fname):
             scores.extend(det_scores)
             frame_nums.extend([np.ones(len(det_scores[i]))*batch_frame_nums[i] for i in range(len(det_scores))])
             ix_list.extend([np.arange(len(det_scores[i])) for i in range(len(det_scores))])
-            process_bbox_detections(batch_frames, batch_frame_nums,
-                                    batch_boxes, process_dir)
+            
+            if save_detections:
+                save_bbox_detections(batch_frames, batch_frame_nums,
+                                        batch_boxes, process_dir)
             
             batch_frames = list()
             batch_frame_nums = list()
@@ -336,10 +338,11 @@ def detect_in_batches(video_fname):
         scores.extend(det_scores)        
         frame_nums.extend([np.ones(len(det_scores[i]))*i+frame_offset for i in range(len(det_scores))])
         ix_list.extend([np.arange(len(det_scores[i])) for i in range(len(det_scores))])
-        process_bbox_detections(batch_frames, batch_frame_nums,
-                                batch_boxes, process_dir)
 
-    
+        if save_detections:
+            save_bbox_detections(batch_frames, batch_frame_nums,
+                                    batch_boxes, process_dir)
+
     #remove all no-detections from list
     n0 = len(boxes)
     boxes = [boxes[i] for i in range(n0) if scores[i][0] is not None]

@@ -3,16 +3,12 @@ import re
 import numpy as np
 import scipy.sparse as sp
 from deepface import DeepFace
-<<<<<<< HEAD
-from tqdm import tqdm 
-import torch
-=======
 from tqdm import tqdm
 import torch
+import pandas as pd
+
 
 def get_gallery_templates(face_ids, embeddings, model=None ):
-    import pandas as pd
->>>>>>> main
 
     face_ids = np.uint32(face_ids)
     embedding_dim = embeddings.shape[1]
@@ -118,12 +114,10 @@ def is_video_face_roi(fname):
     return frame_num
     
 
-<<<<<<< HEAD
-=======
 def img_filter(x):
     return os.path.splitext(x)[-1].lower() in ['.jpeg','jpg','png']
 
->>>>>>> main
+
 def is_img_fname(fname):
     ext = os.path.splitext(fname)[-1]
     ext = ext.lower()
