@@ -42,7 +42,7 @@ def detect_faces_from_frames(video_files, output_directory, save_detection_crops
         frame_tbl = io.load_table(frames_dir,'frames')
         if frame_tbl is not None: 
             frame_num = frame_tbl.frame_num.tolist()
-            frame_list = [os.path.join(process_dir, f'frame_{x:04d}.png') for x in frame_num]
+            frame_list = [os.path.join(frames_dir, f'frame_{x:04d}.png') for x in frame_num]
         else:
             frame_list = sorted(get_files2process(frames_dir, flt=lambda x:is_video_frame(x) is not None))
         logging.info(f'working on video {video_file} with {len(frame_list)}')
@@ -79,7 +79,6 @@ def detect_faces_from_frames(video_files, output_directory, save_detection_crops
                 face_list.append((frame_num, i, confidence, x, y, width, height, landmarks))
         
         db = pd.DataFrame(face_list, columns = ['frame_num','idx','confidence', 'x','y','w','h','landmarks'])
-        frame_tbl = io.load_table(process_dir, 'frames')
         if (frame_tbl is not None) and 'person_id' in frame_tbl:
             logging.info('adding person_id info')
             db = db.merge(frame_tbl, on='frame_num', how='left')
