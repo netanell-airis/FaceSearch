@@ -125,9 +125,17 @@ def is_img_fname(fname):
 
 
 def get_video_process_dir(video_path):
-    process_dir = os.path.splitext(video_path)[0] + '.pipeline'
+    process_dir = os.path.splitext(video_path)[0] + '_pipeline'
     os.makedirs(process_dir, exist_ok=True)
     return process_dir
+
+
+def get_output_dir(video_path, subfolder_name):
+    # subfolder_name - str
+    parent_folder = get_video_process_dir(video_path)
+    output_dir = os.path.join(parent_folder, subfolder_name)
+    os.makedirs(output_dir, exist_ok=True)
+    return output_dir
 
 
 def xyxy2xcycwh(x):

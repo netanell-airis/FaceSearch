@@ -3,10 +3,10 @@ import os
 # from deepface.commons import functions, distance as dst
 import numpy as np
 import pandas as pd
-from face_search.utils import get_gallery_templates
-from face_search.utils import cosine_distance
 import time
 import cv2
+
+from face_search.utils import get_gallery_templates, cosine_distance, get_output_dir
 
 
 class FaceDetector:
@@ -272,8 +272,8 @@ def detect_in_batches(video_fname, save_detections=False):
     from tqdm import tqdm
     import torch 
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    process_dir = os.path.splitext(video_fname)[0] + '.pipeline'
-
+    # process_dir = os.path.splitext(video_fname)[0] + '.pipeline'
+    process_dir = get_output_dir(video_fname, 'face_detections')
     # v_cap = cv2.VideoCapture('20231007_072338_hamza20300_159830.mp4')
     v_cap = cv2.VideoCapture(video_fname)
     v_len = int(v_cap.get(cv2.CAP_PROP_FRAME_COUNT))
