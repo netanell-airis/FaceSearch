@@ -26,7 +26,7 @@ def extract_faces_from_videos(video_files, save_detection_crops=False):
         io.save_table(process_dir, face_tbl,'faces')
 
 
-def detect_faces_from_frames(video_files, save_detection_crops=False):
+def detect_faces_from_frames(video_files, output_directory, save_detection_crops=False):
     from mtcnn import MTCNN
 
     # Initialize the MTCNN detector
@@ -37,7 +37,7 @@ def detect_faces_from_frames(video_files, save_detection_crops=False):
 
     # Iterate over each video file
     for video_file in video_files:
-        process_dir = get_output_dir(video_file, 'face_detections')
+        process_dir = get_output_dir(video_file, output_directory, 'face_detections')
         logger_init(os.path.join(process_dir,'detect_faces_from_frames.log'))
         frame_tbl = io.load_table(process_dir,'frames')
         if frame_tbl is not None: 

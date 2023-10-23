@@ -17,6 +17,18 @@
             ]
         },
         {
+            "name": "video_to_frames",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/video_to_frames.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--input_directory",
+                "${userHome}/work/data/FaceSearch/yt_shorts/",
+            ]
+        },
+        {
             "name": "frames_to_faces",
             "type": "python",
             "request": "launch",

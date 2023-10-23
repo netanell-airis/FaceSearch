@@ -232,7 +232,7 @@ class VideoTracker(object):
                         img = Image.fromarray(face)
                         img.save(fname)
 
-                    
+
                 img0 = draw_boxes(img0, bbox_xyxy, identities)  # BGR
                 
                 # add FPS information on output video

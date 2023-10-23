@@ -28,9 +28,9 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 currentUrl = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(currentUrl, 'yolov5')))
 
-
 # cudnn.benchmark = True
 IOU_THRESH = 0.6  # IoU threshold between tracker bounding box and detection bounding box
+
 
 def calc_iou(xywh1, xywh2):
     x1 = xywh1[:,0][:,np.newaxis]
@@ -54,7 +54,6 @@ def calc_iou(xywh1, xywh2):
     return iou
 
 
-
 class VideoTracker(object):
     def __init__(self, args,video_fname):
         # ***************** Initialize ******************************************************
@@ -66,8 +65,6 @@ class VideoTracker(object):
         self.embeddings = None
         if os.path.isfile(e_fname):             
             self.embeddings = torch.load(e_fname)
-
-        
 
         self.db = pd.read_csv(self.db_fname)           # 0.2
 
@@ -179,7 +176,7 @@ class VideoTracker(object):
         bbox_xywh = boxes.copy() # xyxy2xywh(boxes)    # (#obj, 4)     xc,yc,w,h
         bbox_xywh[:, 2:] = bbox_xywh[:, 2:] * (1 + self.margin_ratio)  # add height/width margins
         im0_arr = np.array(im0)
-        outputs = self.deepsort.update(bbox_xywh, confs, im0_arr,features)
+        outputs = self.deepsort.update(bbox_xywh, confs, im0_arr, features)
         return outputs
 
 

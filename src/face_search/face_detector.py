@@ -263,7 +263,7 @@ def filter_list(src, det):
     return dst 
 
 
-def detect_in_batches(video_fname, save_detections=False):
+def detect_in_batches(video_fname, save_detection_crops=False):
     from facenet_pytorch import MTCNN
     import cv2
     from PIL import Image
@@ -317,7 +317,7 @@ def detect_in_batches(video_fname, save_detections=False):
             frame_nums.extend([np.ones(len(det_scores[i]))*batch_frame_nums[i] for i in range(len(det_scores))])
             ix_list.extend([np.arange(len(det_scores[i])) for i in range(len(det_scores))])
             
-            if save_detections:
+            if save_detection_crops:
                 save_bbox_detections(batch_frames, batch_frame_nums,
                                         batch_boxes, process_dir)
             
@@ -339,7 +339,7 @@ def detect_in_batches(video_fname, save_detections=False):
         frame_nums.extend([np.ones(len(det_scores[i]))*i+frame_offset for i in range(len(det_scores))])
         ix_list.extend([np.arange(len(det_scores[i])) for i in range(len(det_scores))])
 
-        if save_detections:
+        if save_detection_crops:
             save_bbox_detections(batch_frames, batch_frame_nums,
                                     batch_boxes, process_dir)
 

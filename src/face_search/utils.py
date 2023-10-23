@@ -72,6 +72,7 @@ def get_files2process(in_dir, flt=lambda x:'.pth' in x):
             imgs2proc += imgs
     return imgs2proc
 
+
 def extract_signatures(fnames, detector_backend = 'retinaface',target_size=(112,112)):
     signatures = list()
     for img_path in tqdm(fnames,desc='extract_signatures'):
@@ -89,6 +90,7 @@ def extract_signatures(fnames, detector_backend = 'retinaface',target_size=(112,
 
 
 def get_video_files(args):
+    # TODO anna: only use input_directory here, no need for args!
     if os.path.splitext(args.input_directory)[-1] == '.pipeline':
         video_files = [args.input_directory]
     else:
@@ -124,15 +126,16 @@ def is_img_fname(fname):
     return ext in ['.jpeg','.jpg','.png','tif']
 
 
-def get_video_process_dir(video_path):
-    process_dir = os.path.splitext(video_path)[0] + '_pipeline'
+def get_video_process_dir(video_path, output_path):
+    video_name = os.path.splitext(os.path.basename(video_path))[0]
+    process_dir = os.path.join(output_path, video_name) + '_pipeline'
     os.makedirs(process_dir, exist_ok=True)
     return process_dir
 
 
-def get_output_dir(video_path, subfolder_name):
+def get_output_dir(video_path, output_path, subfolder_name):
     # subfolder_name - str
-    parent_folder = get_video_process_dir(video_path)
+    parent_folder = get_video_process_dir(video_path, output_path)
     output_dir = os.path.join(parent_folder, subfolder_name)
     os.makedirs(output_dir, exist_ok=True)
     return output_dir
