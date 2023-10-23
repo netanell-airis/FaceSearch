@@ -9,7 +9,8 @@ import cv2
 import os
 import argparse
 from face_search.fs_logger import logger_init
-from face_search.utils import get_video_process_dir, get_output_dir, is_video, get_files2process
+from face_search.utils import get_output_dir, is_video, get_files2process, get_video_files
+
 from face_search import io
 from face_search.face_detector import detect_in_batches
 
@@ -71,7 +72,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
    
     # Access the values of the arguments
-    from face_search.utils import get_video_files
     input_directory = args.input_directory    
     output_directory = args.output_directory
     if output_directory is None:
