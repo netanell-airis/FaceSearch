@@ -19,7 +19,7 @@ from face_search import io
 # face detector
 #from facenet_pytorch import MTCNN
 
-from face_search.utils import xyxy2xywh, xcycwh2xywh
+from face_search.utils import xyxy2xywh, xcycwh2xywh, get_video_files, get_output_dir
 
 import sys
 import os
@@ -59,14 +59,17 @@ class VideoTracker(object):
         # ***************** Initialize ******************************************************
         self.args = args
         self.margin_ratio = args.margin_ratio
-        self.root_dir = os.path.splitext(video_fname)[0] + '.pipeline'
-        self.db_fname = os.path.join(self.root_dir, 'faces.csv')
-        e_fname = os.path.join(self.root_dir, 'embeddings.pth')
+        self.process_dir = get_output_dir(video_fname, args.output_directory, 'face_ids')
+        self.frames_dir = get_output_dir(video_fname, args.output_directory, 'frames', create=False)
+        self.embeddings_dir = get_output_dir(video_fname, args.output_directory, 'embeddings', create=False)
+        # self.faces_dir = get_output_dir(video_fname, args.output_directory, 'face_detections', create=False)
+        self.db_fname = os.path.join(self.embeddings_dir, 'faces.csv')
+        e_fname = os.path.join(self.embeddings_dir, 'embeddings.pth')
         self.embeddings = None
         if os.path.isfile(e_fname):             
             self.embeddings = torch.load(e_fname)
 
-        self.db = pd.read_csv(self.db_fname)           # 0.2
+        self.db = pd.read_csv(self.db_fname)  # TODO anna: change to io function and if needed used face_detections/faces.csv)
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.device = torch.device('cpu')
@@ -88,7 +91,7 @@ class VideoTracker(object):
         self.frames = list(set(self.db['frame_num'].values))  # list of frame nums
         self.cur_frame = 0
         frame_num = self.frames[0]
-        img_path = os.path.join(self.root_dir, f'frame_{frame_num:04d}.png')
+        img_path = os.path.join(self.frames_dir, f'frame_{frame_num:04d}.png')
         img = Image.open(img_path)
         self.im_width = img.size[0]
         self.im_height = img.size[1]
@@ -105,7 +108,7 @@ class VideoTracker(object):
         last_out = None
         face_ids = list()
         for frame_num in self.frames:
-            img_path = os.path.join(self.root_dir, f'frame_{frame_num:04d}.png')
+            img_path = os.path.join(self.frames_dir, f'frame_{frame_num:04d}.png')
             t0 = time.time()
             img0 = Image.open(img_path)
             # Inference *********************************************************************
@@ -120,10 +123,9 @@ class VideoTracker(object):
 
             if len(outputs) > 0:                
                 bbox_xyxy = outputs[:, :4]  # output box coordinates [x1, y1, x2, y2]
-                bbox_xywh = xyxy2xywh(bbox_xyxy)  # convert to [xc, yc, w, h]
-                b1 = db_frame[['x','y','w','h']].values  # [xc, yc, w, h]
-                b1_xywh = xcycwh2xywh(b1)
-                #iou between boxes in frame and boxes from tracker 
+                bbox_xywh = xyxy2xywh(bbox_xyxy)  # convert to [x1, y1, w, h]
+                b1_xywh = db_frame[['x','y','w','h']].values  # [x1, y1, w, h]
+                # iou between boxes in frame and boxes from tracker 
                 iou = calc_iou(b1_xywh, bbox_xywh)
                 face_ids = iou.argmax(axis=1)
                 new_face_ids = (0 * face_ids)-1
@@ -136,7 +138,7 @@ class VideoTracker(object):
                 self.db.loc[db_frame.index,'face_id'] = new_face_ids
 
                 # Save face crop (with margins) with face_id
-                db_tmp = db_frame[db_frame['face_id'] >=0]
+                db_tmp = db_frame[db_frame['face_id']>=0]
                 for ix in range(len(db_tmp)):
                     x0,y0,w,h = db_tmp.iloc[ix][['x','y','w','h']]
                     # (x0,y0,x1,y1) = outputs[ix,:4]
@@ -152,16 +154,19 @@ class VideoTracker(object):
                     frame_num = db_tmp.iloc[ix].frame_num
                     # face_num = fd.id2num.get(face_id, 0)
                     # fd.id2num[face_id] = face_num + 1
-                    fname = f'faceid_{face_id:04d}_{frame_num:04d}.png'
-                    fname = os.path.join(self.root_dir,fname)
-                    # img = Image.fromarray(face_img)
-                    face_img.save(fname)
                     self.db.loc[db_tmp.index[ix],['x0','y0','x1','y1']] = (x0,y0,x1,y1)
+
+                    if self.args.save_intermediate:
+                        fname = f'faceid_{face_id:04d}_{frame_num:04d}.png'
+                        fname = os.path.join(self.process_dir, fname)
+                        # img = Image.fromarray(face_img)
+                        face_img.save(fname)
                     
-            idx_frame += 1                                                            
+            idx_frame += 1            
+
         t_end = time.time()
         dt = t_end - t_start
-        io.save_table(self.root_dir, self.db, "faces")
+        io.save_table(self.process_dir, self.db, "faces")
         logging.info(f'Total time {dt:.3f}s')
 
 
@@ -180,16 +185,23 @@ class VideoTracker(object):
         return outputs
 
 
-def faces2faceids(video_files,args):
-    for video_fname in video_files:   
-        video_root = os.path.splitext(video_fname)[0] + '.pipeline'     
-        logger_init(os.path.join(video_root,'faces2faceids.log'))
-        face_tbl = io.load_table(video_root, "faces")
+def faces2faceids(video_files, args):
+    for video_fname in video_files: 
+        process_dir = get_output_dir(video_fname, output_directory, 'face_ids')
+        faces_dir = get_output_dir(video_fname, output_directory, 'face_detections', create=False)  
+        embeddings_dir = get_output_dir(video_fname, output_directory, 'embeddings', create=False)  
+        # video_root = os.path.splitext(video_fname)[0] + '.pipeline'     
+        logger_init(os.path.join(process_dir,'faces2faceids.log'))     
+        face_tbl = io.load_table(embeddings_dir, "faces")
+        if face_tbl is None:
+            # search for table in the face detection output dir
+            face_tbl = io.load_table(faces_dir, "faces")
+
         if 'person_id' in face_tbl:
             names = sorted(list(set(face_tbl['person_id'])))
             name2id = dict(zip(names, np.arange(len(names))))
             face_tbl['face_id'] = face_tbl['person_id'].apply(lambda x:name2id[x])
-            io.save_table(video_root, face_tbl, 'faces')
+            io.save_table(process_dir, face_tbl, 'faces')
             continue
 
         with VideoTracker(args, video_fname) as vdo_trk:
@@ -203,17 +215,24 @@ if __name__ == "__main__":
     logger_init()
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_directory', help="The root directory containing video frames")
+    parser.add_argument('--output_directory', help="Directory where output is saved, default is input_directory")
     parser.add_argument("--config_deepsort", type=str, default="./configs/deep_sort.yaml")
+    parser.add_argument('--save_intermediate', action='store_true', default=False)
+
         # face detecot parameters
     parser.add_argument("--scale", type=int, default=2)
     parser.add_argument("--margin_ratio", type=int, default=0.2)
 
     args = parser.parse_args()
 
-    logging.info(f'input_directory={args.input_directory}')
+    input_directory = args.input_directory    
+    output_directory = args.output_directory
+    if output_directory is None:
+        output_directory = input_directory
 
-    from face_search import utils
-    video_files = utils.get_video_files(args)
+    logging.info(f'input_directory={input_directory}')
+
+    video_files = get_video_files(input_directory)
 
     logging.info(f'detecting faces in {len(video_files)} videos')
     t0 = time.time()

@@ -89,12 +89,12 @@ def extract_signatures(fnames, detector_backend = 'retinaface',target_size=(112,
     return signatures
 
 
-def get_video_files(args):
+def get_video_files(videos_dir):
     # TODO anna: only use input_directory here, no need for args!
-    if os.path.splitext(args.input_directory)[-1] == '.pipeline':
-        video_files = [args.input_directory]
+    if os.path.splitext(videos_dir)[-1] == '.pipeline':
+        video_files = [videos_dir]
     else:
-        video_files = get_files2process(args.input_directory, flt=lambda x:is_video(x))
+        video_files = get_files2process(videos_dir, flt=lambda x:is_video(x))
     return video_files
 
 
@@ -126,7 +126,7 @@ def is_img_fname(fname):
     return ext in ['.jpeg','.jpg','.png','tif']
 
 
-def get_video_process_dir(video_path, output_path):
+def get_video_process_dir(video_path, output_path, create=True):
     video_name = os.path.splitext(os.path.basename(video_path))[0]
     process_dir = os.path.join(output_path, video_name) + '_pipeline'
     os.makedirs(process_dir, exist_ok=True)
@@ -135,7 +135,7 @@ def get_video_process_dir(video_path, output_path):
 
 def get_output_dir(video_path, output_path, subfolder_name, create=True):
     # subfolder_name - str
-    parent_folder = get_video_process_dir(video_path, output_path)
+    parent_folder = get_video_process_dir(video_path, output_path, create)
     output_dir = os.path.join(parent_folder, subfolder_name)
     if create:
         os.makedirs(output_dir, exist_ok=True)

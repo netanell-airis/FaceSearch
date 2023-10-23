@@ -77,7 +77,7 @@ if __name__ == "__main__":
     if output_directory is None:
         output_directory = input_directory
 
-    video_files = get_video_files(args)
+    video_files = get_video_files(input_directory)
 
     extract_frames(video_files, output_directory)
     # extract_faces_from_videos(video_files)

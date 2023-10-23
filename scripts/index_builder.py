@@ -22,7 +22,7 @@ def build_index(args):
     """
     needs video_list, corpus_dir
     """
-    video_files = utils.get_video_files(args)
+    video_files = utils.get_video_files(args.input_directory)
     corpus_dir = args.output_directory
     logger_init(os.path.join(corpus_dir,'build_index.log'))
     logging.info(f'building a corpus from {len(video_files)}')

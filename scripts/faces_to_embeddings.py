@@ -143,7 +143,7 @@ if __name__ == "__main__":
     if output_directory is None:
         output_directory = input_directory
 
-    video_files = get_video_files(args)
+    video_files = get_video_files(input_directory)
 
     logging.info(f'detecting faces in {len(video_files)} videos')
     t0 = time.time()

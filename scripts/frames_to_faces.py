@@ -153,7 +153,7 @@ if __name__ == "__main__":
         output_directory = input_directory
     save_detection_crops = args.save_intermediate
 
-    video_files = get_video_files(args)
+    video_files = get_video_files(input_directory)
     
     logging.info(f'detecting faces in {len(video_files)} videos')
     t0 = time.time()
