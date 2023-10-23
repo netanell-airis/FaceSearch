@@ -133,11 +133,12 @@ def get_video_process_dir(video_path, output_path):
     return process_dir
 
 
-def get_output_dir(video_path, output_path, subfolder_name):
+def get_output_dir(video_path, output_path, subfolder_name, create=True):
     # subfolder_name - str
     parent_folder = get_video_process_dir(video_path, output_path)
     output_dir = os.path.join(parent_folder, subfolder_name)
-    os.makedirs(output_dir, exist_ok=True)
+    if create:
+        os.makedirs(output_dir, exist_ok=True)
     return output_dir
 
 

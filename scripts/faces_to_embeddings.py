@@ -12,8 +12,8 @@ import cv2
 import argparse
 
 from face_search.fs_logger import logger_init
-from face_search.utils import is_video_frame, get_video_process_dir
-from face_search.utils import is_video, get_files2process, is_video_face_roi
+from face_search.utils import (is_video_frame, get_output_dir, get_video_process_dir, get_video_files, 
+                               is_video, get_files2process, is_video_face_roi)
 from face_search.face_alignment.align import get_aligned_face
 from face_search.adanet import build_model
 from face_search import io
@@ -43,36 +43,38 @@ def load_embedding_model():
     return model
 
 
-def faces2embeddings_gil(video_files):
+def faces2embeddings_gil(video_files, output_directory):
     model = load_embedding_model()
 
     # Iterate over each video file
     for video_file in video_files:
         t0 = time.time()
-        process_dir = get_video_process_dir(video_file)
+        process_dir = get_output_dir(video_file, output_directory, 'embeddings')  # get_video_process_dir(video_file)
+        frames_dir = get_output_dir(video_file, output_directory, 'frames', create=False)
+        faces_dir = get_output_dir(video_file, output_directory, 'face_detections', create=False)
         logger_init(os.path.join(process_dir,'faces_to_embeddings_gil.log'))
-        db = pd.read_csv(os.path.join(process_dir, 'faces.csv',))
+        db = pd.read_csv(os.path.join(faces_dir, 'faces.csv',))
 
         face_list = db[['frame_num', 'idx', 'landmarks']].values.tolist()
         #face_fnames = [f'frame_{fr:04d}_{idx:04d}.png' for fr, idx, _ in face_list]
         face_fnames = [f'frame_{fr:04d}.png' for fr, _, _ in face_list]
-        face_fnames = [os.path.join(process_dir, x) for x in face_fnames]
+        face_fnames = [os.path.join(frames_dir, x) for x in face_fnames]
+        
         logging.info(f'working on video {video_file} with {len(face_list)} faces')
+        
         det_list = list()
         aligned_faces_db = list()
         aligned_faces_db_names = list()
         for ix, row in tqdm(db.iterrows()):
             frame_num = int(row.frame_num)
             idx = int(row.idx)
-            out_fname = os.path.join(process_dir,
-                                 f'aligned_face_{frame_num:05d}_{idx:04d}.png')
             fname = face_fnames[ix]
-
             # Load the input image
             landmarks = [int(x) for x in db.landmarks[ix][1:-1].strip().split(',')]
             landmarks = [ [landmarks[i], landmarks[i+1]] for i in range(0,10,2)]
 
             aligned_face = prepare_face_for_recognition(fname, landmarks)
+            out_fname = os.path.join(process_dir, f'aligned_face_{frame_num:05d}_{idx:04d}.png')
             aligned_face.save(out_fname)
             aligned_faces_db_names.append(out_fname)
             det_list.append(aligned_face is not None)  # binary
@@ -108,13 +110,6 @@ def faces2embeddings_gil(video_files):
         t1 = time.time()
         logging.info(f'finished detecting {len(db)} faces in {t1 - t0}secs')
 
-
-
-
-
-
-
-
 adaface_models = {
     'ir_50':os.path.join(os.environ['HOME'],'models','adaface_ir50_ms1mv2.ckpt')
 }
@@ -140,21 +135,19 @@ if __name__ == "__main__":
     logger_init()
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_directory', help="The root directory containing video frames")
+    parser.add_argument('--output_directory', help="Directory where output is saved, default is input_directory")
     args = parser.parse_args()
 
-    from face_search import utils 
-    video_files = utils.get_video_files(args)
+    input_directory = args.input_directory    
+    output_directory = args.output_directory
+    if output_directory is None:
+        output_directory = input_directory
+
+    video_files = get_video_files(args)
 
     logging.info(f'detecting faces in {len(video_files)} videos')
     t0 = time.time()
-    faces2embeddings_gil(video_files)
+    faces2embeddings_gil(video_files, output_directory)
     t1 = time.time()
     logging.info(f'process took {t1-t0}secs')
-
-
-
-
-
-
-
 
