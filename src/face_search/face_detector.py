@@ -5,9 +5,13 @@ import numpy as np
 import pandas as pd
 import time
 import cv2
+from facenet_pytorch import MTCNN
+from PIL import Image
+from matplotlib import pyplot as plt
+from tqdm import tqdm
+import torch 
 
 from face_search.utils import get_gallery_templates, cosine_distance, get_output_dir
-
 
 class FaceDetector:
     def __init__(self, device, output_dir):
@@ -247,7 +251,7 @@ class FaceDetector:
         return frame_results, faces
 
 
-def save_bbox_detections(batch_frames, batch_frame_nums, batch_boxes,process_dir):
+def save_bbox_detections(batch_frames, batch_frame_nums, batch_boxes, process_dir):
     for ix, img in enumerate(batch_frames):
         frame_num = batch_frame_nums[ix]
         for bid, box in enumerate(batch_boxes[ix]):
@@ -263,17 +267,10 @@ def filter_list(src, det):
     return dst 
 
 
-def detect_in_batches(video_fname, save_detection_crops=False):
-    from facenet_pytorch import MTCNN
-    import cv2
-    from PIL import Image
-    import numpy as np
-    from matplotlib import pyplot as plt
-    from tqdm import tqdm
-    import torch 
+def detect_in_batches(video_fname, output_path, save_detection_crops=False):
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     # process_dir = os.path.splitext(video_fname)[0] + '.pipeline'
-    process_dir = get_output_dir(video_fname, 'face_detections')
+    process_dir = get_output_dir(video_fname, output_path, 'face_detections')
     # v_cap = cv2.VideoCapture('20231007_072338_hamza20300_159830.mp4')
     v_cap = cv2.VideoCapture(video_fname)
     v_len = int(v_cap.get(cv2.CAP_PROP_FRAME_COUNT))

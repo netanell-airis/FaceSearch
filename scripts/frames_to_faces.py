@@ -7,28 +7,27 @@ import PIL.Image
 import cv2
 import argparse
 import torch
+from mtcnn import MTCNN
 
 from face_search.fs_logger import logger_init
-from face_search.utils import is_video_frame, get_video_process_dir, get_output_dir
+from face_search.utils import is_video_frame, get_video_files, get_output_dir
 from face_search.utils import is_video, get_files2process
 from face_search import io
 from face_search.face_detector import detect_in_batches
 from face_search import io
 
 
-def extract_faces_from_videos(video_files, save_detection_crops=False):
+def extract_faces_from_videos(video_files, output_directory, save_detection_crops=False):
     for video_file in video_files:
         video_file = os.path.splitext(video_file)[0] + '.mp4'
-        process_dir = get_output_dir(video_file, 'face_detections')
+        process_dir = get_output_dir(video_file, output_directory, 'face_detections')
         logger_init(os.path.join(process_dir,'extract_faces_from_videos.log'))
         logging.info(f'working on {video_file}')
-        face_tbl = detect_in_batches(video_file, save_detection_crops=save_detection_crops)
+        face_tbl = detect_in_batches(video_file, output_directory, save_detection_crops=save_detection_crops)
         io.save_table(process_dir, face_tbl,'faces')
 
 
 def detect_faces_from_frames(video_files, output_directory, save_detection_crops=False):
-    from mtcnn import MTCNN
-
     # Initialize the MTCNN detector
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     detector = MTCNN(steps_threshold=[0.6,0.7,0.9])
@@ -38,13 +37,14 @@ def detect_faces_from_frames(video_files, output_directory, save_detection_crops
     # Iterate over each video file
     for video_file in video_files:
         process_dir = get_output_dir(video_file, output_directory, 'face_detections')
+        frames_dir = get_output_dir(video_file, output_directory, 'frames')
         logger_init(os.path.join(process_dir,'detect_faces_from_frames.log'))
-        frame_tbl = io.load_table(process_dir,'frames')
+        frame_tbl = io.load_table(frames_dir,'frames')
         if frame_tbl is not None: 
             frame_num = frame_tbl.frame_num.tolist()
             frame_list = [os.path.join(process_dir, f'frame_{x:04d}.png') for x in frame_num]
         else:
-            frame_list = sorted(get_files2process(process_dir, flt=lambda x:is_video_frame(x) is not None))
+            frame_list = sorted(get_files2process(frames_dir, flt=lambda x:is_video_frame(x) is not None))
         logging.info(f'working on video {video_file} with {len(frame_list)}')
         face_list = list()
         for input_image_path in frame_list: 
@@ -88,16 +88,16 @@ def detect_faces_from_frames(video_files, output_directory, save_detection_crops
         io.save_table(process_dir, db, 'faces')
 
 
-def detect_faces(video_files):
+def detect_faces(video_files, output_directory):
     # Initialize the MTCNN detector
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    detector = MTCNN(steps_threshold=[0.6,0.7,0.9])
+    detector = MTCNN(steps_threshold=[0.6, 0.7, 0.9])
     # detector.to(device)
     # detector.eval()
 
     # Iterate over each video file
     for video_file in video_files:
-        process_dir = get_output_dir(video_file, 'face_detections')
+        process_dir = get_output_dir(video_file, output_directory, 'face_detections')
         logger_init(os.path.join(process_dir,'detect_faces.log'))
         frame_tbl = io.load_table(process_dir,'frames')
         if frame_tbl is not None: 
@@ -139,19 +139,25 @@ if __name__ == "__main__":
     logger_init()
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_directory', help="The root directory containing video frames")
+    parser.add_argument('--output_directory', help="Directory where output is saved, default is input_directory")
     parser.add_argument('--mp4', action='store_true', help="The root directory containing video frames")
     parser.add_argument('--save_detection_crops', action='store_true', default=False)
     args = parser.parse_args()
 
-    from face_search import utils
-    video_files = utils.get_video_files(args)
+    input_directory = args.input_directory    
+    output_directory = args.output_directory
+    if output_directory is None:
+        output_directory = input_directory
+    save_detection_crops = args.save_detection_crops
 
+    video_files = get_video_files(args)
+    
     logging.info(f'detecting faces in {len(video_files)} videos')
     t0 = time.time()
     if args.mp4:
-        extract_faces_from_videos(video_files, args.save_detection_crops)
+        extract_faces_from_videos(video_files, output_directory, save_detection_crops)
     else:
-        detect_faces_from_frames(video_files, args.save_detection_crops)
+        detect_faces_from_frames(video_files, output_directory, save_detection_crops)
 
     t1 = time.time()
     logging.info(f'process took {t1-t0}secs')
