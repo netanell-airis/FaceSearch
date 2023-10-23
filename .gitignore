@@ -1,5 +1,5 @@
 scripts/pipeline_anna.sh
-
+.vscode/
 src/FaceCoresetNet/models/FaceCoresetNet.ckpt
 runs/
 
