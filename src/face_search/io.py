@@ -25,7 +25,7 @@ def load_table(video_root, tbl_name='frames'):
     fname = name2fn[tbl_name](video_root)
     if os.path.isfile(fname):
         logging.info(f'loading {tbl_name} table from {fname}')
-        return pd.read_csv(fname, index_col=[0])
+        return pd.read_csv(fname)
     logging.warn(f'could not find {fname} for {tbl_name}')
     return None
 
