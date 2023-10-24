@@ -15,6 +15,7 @@ DEFAULT_COLOR = 'darkviolet'
 TEXT_BOX_MARGIN = 5
 TEXT_BOX_TOP = 15
 
+FPS = 15 # 5
 np.random.seed(5)
 
 def get_random_colors_for_face_ids(unique_face_ids):
@@ -109,11 +110,16 @@ def draw_faces_on_frames(video_files, pipeline_dir, output_path=None, save_frame
                 fname = os.path.join(face_ids_root,fname)
                 img.save(fname)
 
+            # if frame_num > 15:
+            #     break
+
             # add frame to video:
             cv_img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
             video.write(cv_img)
 
         video.release()        
+        ###
+        break
     
 
 if __name__ == "__main__":

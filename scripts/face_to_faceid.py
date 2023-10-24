@@ -162,7 +162,11 @@ class VideoTracker(object):
                         # img = Image.fromarray(face_img)
                         face_img.save(fname)
                     
-            idx_frame += 1            
+            idx_frame += 1     
+
+            # ### 
+            # if frame_num > 15:
+            #     break
 
         t_end = time.time()
         dt = t_end - t_start
@@ -178,8 +182,13 @@ class VideoTracker(object):
         # db_frame = db_frame.sortby()
         boxes = db_frame[['x','y','w','h']].values
         confs = db_frame['confidence'].values
-        bbox_xywh = boxes.copy() # xyxy2xywh(boxes)    # (#obj, 4)     xc,yc,w,h
+        bbox_xywh = boxes.copy()   # (#obj, 4)     x1,y1,w,h
         bbox_xywh[:, 2:] = bbox_xywh[:, 2:] * (1 + self.margin_ratio)  # add height/width margins
+        ###
+        # TEST anna: - convert to xcycwh because that's what deepsort seems to expect:
+        from face_search.utils import xywh2xcycwh
+        bbox_xywh = xywh2xcycwh(bbox_xywh)
+        ###
         im0_arr = np.array(im0)
         outputs = self.deepsort.update(bbox_xywh, confs, im0_arr, features)
         return outputs

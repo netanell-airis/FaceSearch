@@ -181,6 +181,16 @@ def xcycwh2xyxy(x):
     return y
 
 
+def xywh2xcycwh(x):
+    # Convert nx4 boxes from [x1, y1, w, h] to [xc, yc, x2, y2] where xy1=top-left, xyc=center
+    y = torch.zeros_like(x) if isinstance(x, torch.Tensor) else np.zeros_like(x)
+    y[:, 0] = x[:, 0] + (x[:, 2] / 2 )  # x center
+    y[:, 1] = x[:, 1] + (x[:, 3] / 2)  # y center
+    y[:, 2] = x[:, 2]  # width
+    y[:, 3] = x[:, 3]  # height
+    return y
+
+
 def xywh2xyxy(x):
     # Convert nx4 boxes from [x1, y1, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
     y = torch.zeros_like(x) if isinstance(x, torch.Tensor) else np.zeros_like(x)
