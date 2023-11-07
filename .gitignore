@@ -1,7 +1,10 @@
-scripts/pipeline_anna.sh
-.vscode/
-src/FaceCoresetNet/models/FaceCoresetNet.ckpt
-runs/
-
 __pycache__/
 *.egg-info/
+.vscode/
+
+src/FaceCoresetNet/models/FaceCoresetNet.ckpt
+runs/
+FaceSearch_outputs/
+scripts/pipeline_anna.sh
+
+
